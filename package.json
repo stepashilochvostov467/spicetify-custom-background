@@ -1,0 +1,17 @@
+{
+  "name": "spicetify-custom-background",
+  "version": "2.2.0",
+  "private": true,
+  "description": "Custom backgrounds, glass panels and an immersion mode for Spicetify",
+  "repository": "github:stepashilochvostov467/spicetify-custom-background",
+  "homepage": "https://github.com/stepashilochvostov467/spicetify-custom-background#readme",
+  "bugs": "https://github.com/stepashilochvostov467/spicetify-custom-background/issues",
+  "scripts": {
+    "build": "node scripts/build.cjs",
+    "test": "node tests/test-v2.cjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.55.0"
+  },
+  "license": "MIT"
+}
