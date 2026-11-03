@@ -1,0 +1,25 @@
+/* Spotify 1.3.6 surfaces verified in the live client, including theme overrides. */
+html body #main .uP1rcUSIWCFaOZaoH0ZG,
+html body #main .P1kwly6O5plr1VQVdOLV,
+html body #main .r8bczAWCEgb9_L0iyIcc,
+html body #main .main-topBar-background,
+html body #main .main-topBar-background::before,
+html body #main .main-topBar-background::after,
+html body #main .main-topBar-overlay,
+html body #main .main-topBar-mixingBackground::after,
+html body #main .rrn0EjHTu7eCxn9G0Rrc.iPo4a2lbrsxW9Iedav3h {
+    background-color: transparent !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    transition: none !important;
+}
+/* Keep scrolled text from competing with the transparent sticky headings. */
+html body #main .main-topBar-container,
+html body #main .rrn0EjHTu7eCxn9G0Rrc.iPo4a2lbrsxW9Iedav3h {
+    background-color: transparent !important;
+    backdrop-filter: blur(20px) !important;
+    -webkit-backdrop-filter: blur(20px) !important;
+}
+html body #main [data-cbp-clipped] {
+    clip-path: inset(var(--cbp-clip-top) 0 0 0) !important;
+}

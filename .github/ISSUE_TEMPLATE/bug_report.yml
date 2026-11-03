@@ -1,0 +1,28 @@
+name: Bug report / Сообщить об ошибке
+description: Report a reproducible problem / Сообщить о воспроизводимой проблеме
+title: "[Bug] "
+labels: [bug]
+body:
+  - type: textarea
+    attributes:
+      label: Problem / Проблема
+      description: What happened and what did you expect? / Что произошло и что ожидалось?
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Steps / Шаги
+      description: How can the problem be reproduced? / Как повторить проблему?
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Spotify and Spicetify versions / Версии Spotify и Spicetify
+    validations:
+      required: true
+  - type: input
+    attributes:
+      label: Theme / Тема
+  - type: textarea
+    attributes:
+      label: Screenshot or additional context / Скриншот или подробности

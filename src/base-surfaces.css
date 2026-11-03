@@ -1,0 +1,255 @@
+
+            body { isolation: isolate; background: #121212 !important; }
+            * {
+                --cinema-mode-bg-color-from: transparent !important;
+                --cinema-mode-bg-color-to: transparent !important;
+                --lyrics-color-background: transparent !important;
+                --card-color: transparent !important;
+                --card-color-cover: transparent !important;
+                --background-noise: transparent !important;
+                --section-background-base: transparent !important;
+            }
+            :root {
+                --background-base: transparent !important;
+                --background-elevated-base: transparent !important;
+            }
+            .Root__top-container, .main-view-container__scroll-node-child,
+            .main-yourLibraryX-libraryContainer, .main-yourLibraryX-background,
+            .Root__nav-bar, #main,
+            .main-topBar-background, .main-topBar-overlay,
+            .Root__now-playing-bar,
+            #global-nav-bar, .Root__globalNav,
+            .Root__right-sidebar,
+            .gpBiAnJHb1gq46qV,
+            .pk9BAVtyZVEnbPof,
+            .main-entityHeader-background,
+            .main-entityHeader-backgroundColor,
+            .main-entityHeader-overlay,
+            .main-actionBarBackground,
+            .main-trackList-trackListHeaderStuck,
+            .main-trackList-trackListHeader,
+            .main-nowPlayingView-container,
+            .main-nowPlayingView-mainContainer,
+            .ZWDHceKsZZA3lvFT,
+            .YZ3y8n8ToUt_xDKt {
+                background-color: transparent !important;
+                background: transparent !important;
+                background-image: none !important;
+                box-shadow: none !important;
+            }
+            .x-categoryTab-CategoryTab,
+            .x-filterBox-filter {
+                background-color: rgba(100, 100, 100, 0.3) !important;
+                border: 1px solid rgba(255, 255, 255, 0.1) !important;
+                backdrop-filter: blur(8px) !important;
+                border-radius: 32px !important;
+                transition: 0.2s !important;
+            }
+            .x-categoryTab-CategoryTab[aria-selected="true"] {
+                background-color: rgba(255, 255, 255, 0.2) !important;
+                border: 1px solid rgba(255, 255, 255, 0.5) !important;
+            }
+            .x-categoryTab-CategoryTab:hover, .x-filterBox-filter:hover {
+                background-color: rgba(255, 255, 255, 0.15) !important;
+            }
+            .main-nowPlayingBar-container {
+                background-color: rgba(10, 10, 10, ${playerOp}) !important;
+                background: rgba(10, 10, 10, ${playerOp}) !important;
+                backdrop-filter: none !important;
+                border: none !important;
+                border-top: 1px solid rgba(255, 255, 255, 0.05) !important;
+            }
+            .main-card-cardContainer,
+            .main-card-card,
+            .main-heroCard-card,
+            .main-yourLibraryX-entryItem,
+            .view-homeShortcutsGrid-shortcut,
+            .main-home-shortcut,
+            .main-contextMenu-menu {
+                background-color: rgba(20, 20, 20, ${cardOp}) !important;
+                background: rgba(20, 20, 20, ${cardOp}) !important;
+                backdrop-filter: none !important;
+                border: 6px solid transparent !important;
+                background-clip: padding-box !important;
+                border-radius: 14px !important;
+                transition: background-color 0.2s ease, background 0.2s ease !important;
+            }
+            .main-card-cardContainer:hover,
+            .main-card-card:hover, 
+            .main-yourLibraryX-entryItem:hover,
+            .main-home-shortcut:hover, 
+            .view-homeShortcutsGrid-shortcut:hover {
+                background-color: rgba(45, 45, 45, calc(${cardOp} + 0.2)) !important;
+                background: rgba(45, 45, 45, calc(${cardOp} + 0.2)) !important;
+            }
+            .zPBFT1LAMAuacsb6,
+            .main-nowPlayingView-queueItem .e-10451-legacy-list-row,
+            .main-nowPlayingView-credits .e-10451-legacy-list-row {
+                background-color: rgba(20, 20, 20, ${cardOp}) !important;
+                background: rgba(20, 20, 20, ${cardOp}) !important;
+                backdrop-filter: none !important;
+                border: none !important;
+                border-radius: 8px !important;
+            }
+            .e-10451-card__button,
+            .e-10451-card__on-click,
+            .main-cardImage-imageWrapper,
+            .main-cardImage-imageWrapper > div,
+            .main-card-imageContainer,
+            .main-home-homeHeader,
+            div[class*="homeHeader"],
+            [data-testid="home-page"] > div:first-child {
+                background: transparent !important;
+                background-color: transparent !important;
+                background-image: none !important;
+                box-shadow: none !important;
+                border: none !important;
+            }
+            .NowPlayingView,
+            .main-nowPlayingView-section,
+            #lyrics-cinema,
+            .Root__lyrics-cinema,
+            #SpicyLyricsNPVCard, 
+            #SpicyLyricsPage, 
+            .SpicyRenderer, 
+            .ContentBox,
+            .NowBar, 
+            .LyricsContainer, 
+            .LyricsContent, 
+            .SpicyLyricsScrollContainer,
+            .VirtualLyricsContainer,
+            .BrE1JdiaGL4XscBh, 
+            .JacI9L8XJSIjX3Gp, 
+            .NUo3jiNfWtYtagMn, 
+            .lusRYvjXWncP_Aqb,
+            .lyrics-lyricsContainer-LyricsContainer,
+            .lyrics-lyricsContainer-ProviderView,
+            .main-nowPlayingView-content {
+                background-color: transparent !important;
+                border: none !important;      
+                box-shadow: none !important;  
+            }
+            canvas.spicy-dynamic-bg,
+            .main-nowPlayingView-aboutArtist .P1a_MNB6ZEIu50sz,
+            .main-nowPlayingView-aboutArtist [style*="background-image"],
+            .lyrics-lyrics-background,
+            .TLo_mZ7hWAaT3fsA,
+            .KBRwz1uoWl0AAEsT,
+            .g5l1TSALoQMUlKhS,
+            .T0IQrE6mvz4Fs7rc,
+            .lyrics-lyricsContainer-LyricsBackground {
+                display: none !important;
+                opacity: 0 !important;
+                background: transparent !important;
+                background-image: none !important;
+            }
+            body::before {
+                content: "" !important;
+                position: fixed !important;
+                top: 0; left: 0; right: 0; bottom: 0 !important;
+                background: rgba(0, 0, 0, ${bgOp}) !important;
+                z-index: -1 !important;
+                pointer-events: none !important;
+            }
+            /* Panel wrappers in Spotify 1.3.6; keep artwork and controls intact. */
+            .Root__main-view,
+            .Root__nav-bar,
+            .Root__now-playing-bar,
+            .yQCyOSVcMCen_NJKPHB6,
+            .XvuTwlgQRqJ5NnVLN9ZH,
+            .main-yourLibraryX-library,
+            .main-yourLibraryX-libraryRootlist,
+            .main-yourLibraryX-libraryRootlistContents,
+            .qB0QkhexXi3Wx0P1k0Rf,
+            .main-view-container,
+            .main-view-container__mh-footer-container,
+            [data-testid="home-page"],
+            [data-testid="home-page"] .kMaYBahSBLOnErF7DLR2,
+            .kMaYBahSBLOnErF7DLR2,
+            .xCEkyVpabf3oVGmFQVej,
+            .main-home-homeHeader,
+            .main-home-homeHeader::before,
+            .main-home-homeHeader::after,
+            .Dm_tXf4_OMK2m7UbfxgV.i7X8RVjZPy66Kx0dUHIK::before {
+                background: transparent !important;
+                background-image: none !important;
+                box-shadow: none !important;
+            }
+            /* Background-only gradient layers, including inline color overrides. */
+            .hbNOZbHD3bPL3OcHQWNn,
+            .hbNOZbHD3bPL3OcHQWNn[data-seamless-gradient] {
+                background: transparent !important;
+                background-image: none !important;
+                --color-from: transparent !important;
+                --color-to: transparent !important;
+                --dither: none !important;
+            }
+            /* Variables must also be set on panels, where Spotify redefines them. */
+            .Root__nav-bar,
+            .yQCyOSVcMCen_NJKPHB6,
+            .main-yourLibraryX-library,
+            .main-yourLibraryX-libraryContainer,
+            [data-testid="home-page"] {
+                --background-base: transparent !important;
+                --background-base-min-contrast: transparent !important;
+                --background-base-20: transparent !important;
+                --background-base-70: transparent !important;
+                --background-noise: none !important;
+            }
+            .main-nowPlayingBar-nowPlayingBar,
+            [data-testid="now-playing-bar"] {
+                background: rgba(10, 10, 10, ${playerOp}) !important;
+                box-shadow: none !important;
+            }
+            /* Avoid stacking two translucent backgrounds on the player. */
+            [data-testid="now-playing-bar"] .main-nowPlayingBar-container {
+                background: transparent !important;
+            }
+            /* Playlist / artist surfaces and their scroll-dependent layers. */
+            .playlist-playlist-playlistContent,
+            .fmJtSKRbaIwuGI4eOWBt,
+            .I5gPGkX7nJaKDMRuOyf2,
+            .u9i__FHAyXJecXMPsrLQ,
+            .GECIboaMmkIqHDKwQ3vR,
+            .z0ow24AABLbFsQt7mYDF,
+            .ErNDIeqOIhQ9kGfrxqS_,
+            .C0YTSqDKL6_Qo68om_i1,
+            .main-entityHeader-container,
+            .main-entityHeader-container::before,
+            .main-entityHeader-container::after,
+            .main-entityHeader-background,
+            .main-entityHeader-backgroundColor,
+            .main-entityHeader-overlay,
+            .main-actionBarBackground,
+            .main-actionBar-ActionBar,
+            .main-topBar-container,
+            .main-topBar-background,
+            .main-topBar-overlay,
+            .main-topBar-mixingBackground,
+            .main-topBar-mixingBackground::after,
+            .playlist-playlist-mixingBackground,
+            .playlist-playlist-mixingBackground::after,
+            .main-trackList-trackListHeader,
+            .main-trackList-trackListHeaderStuck,
+            .SdObJk3_bmCg1nV_PTUU.tnEtMe827oywEa8TgLqg,
+            .IfBZ5VdI_2nwDMl4H6Yh,
+            .QwcIb5mGvbu4qb3_cnAQ,
+            .venMPE3QitySGonlITLf,
+            .venMPE3QitySGonlITLf::after,
+            .AE3dcjFNJ9068_vrnLB6,
+            .AE3dcjFNJ9068_vrnLB6::after,
+            .nfBy1HoO33kgPOyEc3WZ {
+                background: transparent !important;
+                background-image: none !important;
+                box-shadow: none !important;
+            }
+            /* Artist banner photography is a separate decorative layer. */
+            .main-entityHeader-backgroundImage,
+            .main-entityHeader-backgroundImageContainer,
+            .b7x0AwQ51vLACMAHB71B,
+            .L0UgUY1nWxdZ3XyrJNMt {
+                background: transparent !important;
+                background-image: none !important;
+                opacity: 0 !important;
+            }
+            
