@@ -61,22 +61,23 @@
             this.lyricsPanel.querySelector('[data-retry]').onclick=()=>this.loadPanelLyrics(true);
             this.lyricsPanel.querySelector('[data-close]').onclick=()=>{this.settings.lyricsSource='off';this.save();this.syncUI();this.render();};document.body.append(this.lyricsPanel);
             await originalInit.call(this);
+            this.initPanelBackdrop();
             const route=()=>this.applyRouteScene().catch(e=>this.report(e));
             const history=Spicetify.Platform?.History;
             if(typeof history?.listen==='function')this.unlistenRoute=history.listen(route);
             else this.routeTimer=setInterval(()=>{if(!document.hidden&&this.routePath()!==this.lastRoute)route();},1000);
             window.addEventListener('popstate',route);
             Spicetify.Player.addEventListener('songchange',()=>this.loadPanelLyrics());
-            Spicetify.Player.addEventListener('onplaypause',()=>this.updateLyricsClock());
+            Spicetify.Player.addEventListener('onplaypause',()=>{this.updateLyricsClock();this.syncPanelBackdropPlayback();});
             Spicetify.Player.addEventListener('onprogress',()=>{if(!document.hidden&&this.settings.lyricsSource!=='off')this.syncPanelLyrics();});
-            document.addEventListener('visibilitychange',()=>this.updateLyricsClock());
+            document.addEventListener('visibilitychange',()=>{this.updateLyricsClock();this.syncPanelBackdropPlayback();});
             this.updateLyricsClock();
             await route();
         },
         async render() {
             await originalRender.call(this);if(!this.studioStyle)return;
             this.renderStudio();this.updateRouteStatus();
-            if(this.lyricsPanel){this.loadPanelLyrics();this.updateLyricsClock();}
+            if(this.lyricsPanel){this.loadPanelLyrics();this.updateLyricsClock();this.refreshPanelBackdrop();}
         },
         renderStudio() {
             const s=this.settings, fonts={default:'inherit',system:'system-ui,sans-serif'};
@@ -152,7 +153,11 @@
         .cbp-editor-tools{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:min(720px,90vw);background:#14171ff5;color:white;border:1px solid #ffffff30;border-radius:16px;padding:18px;display:flex;gap:12px;flex-wrap:wrap;cursor:default;font:14px system-ui}
         .cbp-editor-tools button,#cbp-lyrics button,#cbp-import-preview button{font:inherit;color:inherit;background:#ffffff15;border:1px solid #ffffff30;border-radius:8px;padding:8px;cursor:pointer}
         .cbp-editor-tools strong{width:100%}.cbp-editor-tools label{display:flex;gap:8px;align-items:center}
-        #cbp-lyrics{position:fixed;right:8px;top:82px;bottom:100px;z-index:5;padding:18px;box-sizing:border-box;display:flex;flex-direction:column;background:#11151caa;backdrop-filter:blur(18px);border-radius:16px;color:var(--cbp-lyric-ink,#fff);font-family:system-ui;box-shadow:0 0 0 1px #ffffff18}
+        #cbp-lyrics{position:fixed;right:8px;top:8px;bottom:8px;z-index:5;padding:18px;box-sizing:border-box;display:flex;flex-direction:column;background:#11151c;backdrop-filter:none;border-radius:16px;isolation:isolate;overflow:hidden;color:var(--cbp-lyric-ink,#fff);font-family:system-ui;text-shadow:0 1px 4px #0009;box-shadow:0 0 0 1px #ffffff18}
+        #cbp-lyrics>.cbp-panel-backdrop{position:absolute;inset:0;z-index:0;pointer-events:none;background:#11151c}
+        #cbp-lyrics>.cbp-panel-backdrop :is(img,video){position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;object-position:center;filter:none;border-radius:0}
+        #cbp-lyrics>.cbp-panel-backdrop:is([data-source=canvas],[data-source=clip])>img{display:none}
+        #cbp-lyrics>:not(.cbp-panel-backdrop){position:relative;z-index:1}
         #cbp-lyrics[hidden]{display:none}#cbp-lyrics header{display:flex;justify-content:space-between;align-items:center;font-size:15px;gap:8px}#cbp-lyrics p{font-size:13px;line-height:1.5}
         #cbp-lyrics .cbp-lines{overflow:auto;flex:1;min-height:0;padding-block:32px;scrollbar-width:thin}
         #cbp-lyrics .cbp-line{display:block;width:100%;border:0;background:transparent;text-align:start;color:inherit;font:inherit;line-height:1.5;opacity:.45;padding:12px 4px;white-space:pre-wrap;overflow-wrap:anywhere;transition:opacity .2s}

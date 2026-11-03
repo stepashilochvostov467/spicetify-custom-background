@@ -5,6 +5,8 @@ Custom backgrounds, transparent panels and synced lyrics for Spotify.
 
 [Русский](#русский) · [English](#english)
 
+**4.3.0** · Canvas и клипы в панели текста на всю высоту, без градиента и обложки под видео. / Full-height lyric sidebar with Canvas and music video backgrounds, without gradient overlays or a cover beneath the video.
+
 ## Русский
 
 ### Что умеет
@@ -44,6 +46,8 @@ spicetify apply
 
 При наличии таймингов заливка плавно проходит по буквам внутри каждого слога, строки следуют за воспроизведением. Цвет берётся из твоего оформления. Нажатие на строку перематывает песню. Если источник предоставляет только строки, панель сообщает об этом. Spotify выбирается отдельно — скрытой подмены источника нет.
 
+Фон панели текста выбирается автоматически: Canvas текущего трека → доступное клиенту видео клипа → статичная обложка. Панель занимает всю высоту окна с небольшими отступами. Видео заполняет её с центральным кадрированием, без искажения пропорций, размытия и градиента; обложка под видео скрыта. Защищённые или недоступные клиенту клипы заменяются обложкой. Основной пользовательский фон остаётся прежним.
+
 ### Производительность и совместимость
 
 У статичного фона нет постоянного кадрового цикла. Анимация слогов работает только во время воспроизведения в видимом окне; на паузе и при выключенных текстах останавливается. Одинаковые стили не применяются повторно. Видео приостанавливается в скрытом окне.
@@ -67,6 +71,8 @@ Install [Spicetify](https://spicetify.app/docs/getting-started/), download [cust
 For Spicy lyrics, install [Spicy Lyrics](https://github.com/Spikerko/spicy-lyrics) separately and keep its native sidebar Lyrics card enabled. Select Spicy Lyrics in this extension's settings. Uncached songs automatically start the native loader without leaving the current playlist. No direct Spicy API calls or token access are used.
 
 Syllable timestamps drive a smooth fill across letters, with automatic line following and the selected text color. Click a line to seek. Songs with only line timing are labeled accordingly. Spotify is an explicit separate source, with no silent fallback.
+
+The lyric sidebar automatically uses the current track's Canvas, then an accessible music video, then a static cover. The panel spans the window height with small edge margins. Video fills it with centered cropping, preserving its aspect ratio without blur or gradient overlays; the underlying cover is hidden. Protected or unavailable videos fall back to the cover. Your main wallpaper remains unchanged.
 
 Static backgrounds have no animation loop. Syllable animation stops on pause, hidden windows and disabled lyrics. Styles are cached. Version 4.2.1 adds indexed line lookup, batched lyric rendering and cache-list reuse. UI compatibility depends on the Spotify build; tested with Spotify 1.3.6 and Spicetify 2.46.2.
 
