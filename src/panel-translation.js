@@ -7,6 +7,23 @@
         return code>0&&code<=0x10ffff&&!(code>=0xd800&&code<=0xdfff)?String.fromCodePoint(code):entity;
     });
     Object.assign(APP,{
+        lyricLanguage(value,lines) {
+            const tag=typeof value==='string'?value.trim().toLowerCase().replace(/_/g,'-'):'';
+            const aliases={eng:'en',english:'en',rus:'ru',russian:'ru',spa:'es',fra:'fr',fre:'fr',deu:'de',ger:'de',por:'pt',ita:'it',jpn:'ja',kor:'ko',zho:'zh',chi:'zh'};
+            const primary=tag.split('-')[0],language=aliases[primary]||primary;
+
+            // Some lyric sources return "und" even for English. Check the words
+            // before rejecting a song that the local EN→RU model can translate.
+            const text=lines.map(line=>line.text).join(' ').slice(0,16000);
+            if(/\p{Script=Cyrillic}/u.test(text)&&!/[a-z]/i.test(text))return 'ru';
+            const words=text.toLowerCase().match(/[a-z]+/g)||[];
+            const common=new Set(['i','you','your','me','my','we','the','and','is','it','that','to','of','for','with','not','but','this','have','on','in','can','be']);
+            const found=new Set(words.filter(word=>common.has(word)));
+            // Provider language tags can be wrong (e.g. English labeled pcm/sco).
+            if(found.size>=5&&words.filter(word=>common.has(word)).length/Math.max(1,words.length)>=.25)return 'en';
+            if(/^[a-z]{2,3}$/.test(language)&&!['und','unk','zxx','mul','xx','zz'].includes(language))return language;
+            return found.size>=3?'en':'autodetect';
+        },
         translationWithTone(source,translated) {
             // A phrasal verb, not a literal sexual verb. Do not rewrite unrelated profanity.
             const phrase=source.match(/\bfucking\s+(me|you|him|her|us|them)\s+up\b/i);

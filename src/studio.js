@@ -163,7 +163,7 @@
         .cbp-editor-tools{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:min(720px,90vw);background:#14171ff5;color:white;border:1px solid #ffffff30;border-radius:16px;padding:18px;display:flex;gap:12px;flex-wrap:wrap;cursor:default;font:14px system-ui}
         .cbp-editor-tools button,#cbp-lyrics button,#cbp-import-preview button{font:inherit;color:inherit;background:#ffffff15;border:1px solid #ffffff30;border-radius:8px;padding:8px;cursor:pointer}
         .cbp-editor-tools strong{width:100%}.cbp-editor-tools label{display:flex;gap:8px;align-items:center}
-        #cbp-lyrics{position:fixed;right:8px;top:8px;bottom:8px;z-index:9000;padding:18px;box-sizing:border-box;display:flex;flex-direction:column;background:#11151c;backdrop-filter:none;border-radius:16px;isolation:isolate;overflow:hidden;color:var(--cbp-panel-ink,var(--cbp-lyric-ink,#fff));font-family:system-ui;text-shadow:0 1px 4px #0009;box-shadow:0 0 0 1px #ffffff18}
+        #cbp-lyrics{position:fixed;right:8px;top:8px;bottom:8px;z-index:9000;padding:18px;box-sizing:border-box;display:flex;flex-direction:column;background:#11151c;backdrop-filter:none;border-radius:16px;isolation:isolate;overflow:hidden;color:var(--cbp-panel-ink,var(--cbp-lyric-ink,#fff));font-family:var(--font-family,var(--encore-body-font-stack,sans-serif));font-weight:500;text-shadow:0 1px 2px #0006;box-shadow:0 0 0 1px #ffffff18}
         #cbp-lyrics>.cbp-panel-backdrop{position:absolute;inset:0;z-index:0;pointer-events:none;background:#11151c}
         #cbp-lyrics>.cbp-panel-backdrop :is(img,video){position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;object-position:center;filter:none;border-radius:0}
         #cbp-lyrics>.cbp-panel-backdrop::after{content:"";position:absolute;inset:0;background:var(--cbp-panel-scrim,#0000001f)}
@@ -174,14 +174,13 @@
         #cbp-lyrics[hidden]{display:none}#cbp-lyrics header{display:flex;justify-content:space-between;align-items:center;font-size:15px;gap:8px}#cbp-lyrics p{font-size:13px;line-height:1.5}
         #cbp-lyrics .cbp-lines{overflow:auto;flex:1;min-height:0;padding-block:32px;scrollbar-width:thin}
         #cbp-lyrics .cbp-line{display:block;width:100%;border:0;background:transparent;text-align:start;color:inherit;font:inherit;line-height:1.5;opacity:1;padding:12px 4px;white-space:pre-wrap;overflow-wrap:anywhere;transition:opacity .2s}
-        #cbp-lyrics .cbp-line[aria-current=true]{opacity:1;font-weight:650;background:#ffffff0d}#cbp-lyrics .cbp-line:hover{opacity:1}
-        #cbp-lyrics :is(.cbp-original,.cbp-syllable,.cbp-translation){-webkit-text-stroke:.25px var(--cbp-panel-outline,#000b);paint-order:stroke fill}
+        #cbp-lyrics .cbp-line[aria-current=true]{opacity:1;font-weight:600;background:#ffffff0d}#cbp-lyrics .cbp-line:hover{opacity:1}
         #cbp-lyrics .cbp-original{display:block}
-        #cbp-lyrics .cbp-translation{display:block;font-size:.7em;font-weight:450;line-height:1.45;margin-top:5px;opacity:1;color:inherit}
+        #cbp-lyrics .cbp-translation{display:block;font-size:.7em;font-weight:400;line-height:1.45;margin-top:5px;opacity:1;color:inherit}
         #cbp-lyrics .cbp-translation[hidden]{display:none}
         #cbp-lyrics [data-translation][aria-pressed=true]{background:#ffffff30;outline:1px solid currentColor}
         #cbp-lyrics .cbp-translation-status{font-size:12px;margin:0 0 6px}
-        #cbp-lyrics .cbp-line:has(.cbp-syllable){font-weight:650;opacity:1}
+        #cbp-lyrics .cbp-line:has(.cbp-syllable){font-weight:500;opacity:1}#cbp-lyrics .cbp-line[aria-current=true]:has(.cbp-syllable){font-weight:600}
         #cbp-lyrics .cbp-line[aria-current=true]:has(.cbp-syllable){opacity:1}
         #cbp-lyrics .cbp-syllable{--cbp-fill:0%;display:inline-block;white-space:pre;color:transparent;background:linear-gradient(var(--cbp-syllable-direction,90deg),var(--cbp-panel-ink,var(--cbp-lyric-ink,#fff)) var(--cbp-fill),var(--cbp-panel-muted-ink,var(--cbp-panel-ink,var(--cbp-lyric-ink,#fff))) var(--cbp-fill));background-clip:text;-webkit-background-clip:text;transition:transform .18s ease;transform:translateY(0)}
         #cbp-lyrics .cbp-syllable-active{transform:translateY(-1px)}

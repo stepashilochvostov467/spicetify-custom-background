@@ -34,3 +34,10 @@ npm test запускает функциональные проверки, ср�
 The synthetic 2000-line fixture reduces attribute mutations for 100 line transitions from 400,000 to 400, in both directions. Translation application reads 2,000 line texts instead of 204,000. Static covers are analyzed once rather than on every recalculation; custom text colors require no pixel sampling. Already-playing videos receive no redundant play calls.
 
 These are extension-level operation counts, not a whole-app speedup claim. Automatic wallpaper analysis matches the previous output on 20 opaque, transparent and uniform fixtures. Functional checks cover seeking, overlapping and zero-duration syllables, delayed video decoding, appearance transfer, and translation. The actual local model also passes fresh-worker offline inference without sending lyrics over the network. Model quality and decoding parameters are unchanged.
+
+
+## Lyrics fix
+
+Normalized language codes and checked clearly English lyrics against incorrect provider tags before local translation. Sidebar uses the Spotify font without glyph strokes. Offline translation and model quality are unchanged.
+
+Simulated Spicy card ready at 60 ms reached our sidebar in 84–89 ms (previously 406–408 ms). A temporary listener wakes the cache read, with a 400 ms fallback and a 24-second timeout. External service response time is excluded.

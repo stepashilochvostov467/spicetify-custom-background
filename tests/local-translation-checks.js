@@ -12,6 +12,12 @@ async () => {
         }
         terminate(){closed++;}
     };
+    const english=[{text:"But I still keep their number and their necklace, kisses to my exes"}];
+    for(const tag of ['und','unknown','',null,'EN_us','en-Latn-US','eng','English'])ok(a.lyricLanguage(tag,english)==='en','English lyrics normalize language tag '+tag);
+    ok(a.lyricLanguage('es',[{text:'Esta noche quiero bailar contigo'}])==='es','explicit non-English metadata remains authoritative');
+    ok(a.lyricLanguage('pcm',english)==='en','incorrect provider language does not block clearly English lyrics');
+    ok(a.lyricLanguage('und',[{text:'Esta noche quiero bailar contigo'}])==='autodetect','unknown Latin text is not automatically labeled English');
+    ok(a.lyricLanguage('und',[{text:'Это песня на русском языке'}])==='ru','unknown Cyrillic lyrics are identified as Russian');
     ok(CBP.normalize({}).lyricsTranslationEngine==='local','local translation is the default engine');
     ok(CBP.normalize({lyricsTranslationEngine:'unsafe-url'}).lyricsTranslationEngine==='local','unknown translator engines are rejected');
     Spicetify.Player.data.item={uri:'spotify:track:LOCALTEST',metadata:{image_url:testImage}};

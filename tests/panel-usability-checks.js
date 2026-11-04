@@ -28,6 +28,9 @@ async () => {
     a.settings.lyricsDim=0;await a.render();ok(a.lyricsPanel.style.getPropertyValue('--cbp-panel-scrim')==='rgba(0,0,0,0)','panel dimming can be disabled completely');
     a.settings.lyricsDim=.35;await a.render();ok(a.lyricsPanel.style.getPropertyValue('--cbp-panel-scrim')==='rgba(0,0,0,0.35)','panel dimming follows the explicit setting');
     a.settings.lyricsDim=.12;await a.render();
+    document.documentElement.style.setProperty('--font-family','Arial, sans-serif');
+    ok(getComputedStyle(a.lyricsPanel).fontFamily.includes('Arial'),'sidebar inherits the Spotify font variable');
+    ok(parseFloat(getComputedStyle(a.lyricsPanel.querySelector('.cbp-original')).webkitTextStrokeWidth)===0,'lyric glyphs have no artificial stroke');
     const row=a.lyricsPanel.querySelector('.cbp-line');
     ok(getComputedStyle(row).opacity==='1','lyric rows do not compound opacity with syllables or translations');
     const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0 0 auto;height:95px;z-index:1000;-webkit-app-region:drag';document.body.append(overlay);

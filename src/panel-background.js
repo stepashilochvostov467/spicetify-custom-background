@@ -113,7 +113,7 @@
             this.lyricsPanel.style.setProperty('--cbp-panel-muted-ink','#'+muted.map(c=>c.toString(16).padStart(2,'0')).join(''));
             this.lyricsPanel.style.setProperty('--cbp-panel-scrim',`rgba(0,0,0,${s.lyricsDim})`);
             this.lyricsPanel.style.setProperty('--cbp-panel-outline',light?'#000c':'#ffffffd9');
-            this.lyricsPanel.style.textShadow=light?'0 1px 2px #000e,0 0 5px #000b':'0 1px 2px #fffffff0,0 0 4px #ffffffc0';
+            this.lyricsPanel.style.textShadow=light?'0 1px 2px #0008':'0 1px 2px #ffffff99';
         },
         async playPanelURL(url,kind,signal) {
             this.clearPanelVideo();const video=this.newPanelVideo();video.style.opacity='0';

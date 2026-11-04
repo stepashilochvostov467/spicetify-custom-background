@@ -911,7 +911,7 @@ html body #main [data-cbp-clipped] {
         .cbp-editor-tools{position:absolute;bottom:20px;left:50%;transform:translateX(-50%);width:min(720px,90vw);background:#14171ff5;color:white;border:1px solid #ffffff30;border-radius:16px;padding:18px;display:flex;gap:12px;flex-wrap:wrap;cursor:default;font:14px system-ui}
         .cbp-editor-tools button,#cbp-lyrics button,#cbp-import-preview button{font:inherit;color:inherit;background:#ffffff15;border:1px solid #ffffff30;border-radius:8px;padding:8px;cursor:pointer}
         .cbp-editor-tools strong{width:100%}.cbp-editor-tools label{display:flex;gap:8px;align-items:center}
-        #cbp-lyrics{position:fixed;right:8px;top:8px;bottom:8px;z-index:9000;padding:18px;box-sizing:border-box;display:flex;flex-direction:column;background:#11151c;backdrop-filter:none;border-radius:16px;isolation:isolate;overflow:hidden;color:var(--cbp-panel-ink,var(--cbp-lyric-ink,#fff));font-family:system-ui;text-shadow:0 1px 4px #0009;box-shadow:0 0 0 1px #ffffff18}
+        #cbp-lyrics{position:fixed;right:8px;top:8px;bottom:8px;z-index:9000;padding:18px;box-sizing:border-box;display:flex;flex-direction:column;background:#11151c;backdrop-filter:none;border-radius:16px;isolation:isolate;overflow:hidden;color:var(--cbp-panel-ink,var(--cbp-lyric-ink,#fff));font-family:var(--font-family,var(--encore-body-font-stack,sans-serif));font-weight:500;text-shadow:0 1px 2px #0006;box-shadow:0 0 0 1px #ffffff18}
         #cbp-lyrics>.cbp-panel-backdrop{position:absolute;inset:0;z-index:0;pointer-events:none;background:#11151c}
         #cbp-lyrics>.cbp-panel-backdrop :is(img,video){position:absolute;inset:0;display:block;width:100%;height:100%;max-width:none;max-height:none;object-fit:cover;object-position:center;filter:none;border-radius:0}
         #cbp-lyrics>.cbp-panel-backdrop::after{content:"";position:absolute;inset:0;background:var(--cbp-panel-scrim,#0000001f)}
@@ -922,14 +922,13 @@ html body #main [data-cbp-clipped] {
         #cbp-lyrics[hidden]{display:none}#cbp-lyrics header{display:flex;justify-content:space-between;align-items:center;font-size:15px;gap:8px}#cbp-lyrics p{font-size:13px;line-height:1.5}
         #cbp-lyrics .cbp-lines{overflow:auto;flex:1;min-height:0;padding-block:32px;scrollbar-width:thin}
         #cbp-lyrics .cbp-line{display:block;width:100%;border:0;background:transparent;text-align:start;color:inherit;font:inherit;line-height:1.5;opacity:1;padding:12px 4px;white-space:pre-wrap;overflow-wrap:anywhere;transition:opacity .2s}
-        #cbp-lyrics .cbp-line[aria-current=true]{opacity:1;font-weight:650;background:#ffffff0d}#cbp-lyrics .cbp-line:hover{opacity:1}
-        #cbp-lyrics :is(.cbp-original,.cbp-syllable,.cbp-translation){-webkit-text-stroke:.25px var(--cbp-panel-outline,#000b);paint-order:stroke fill}
+        #cbp-lyrics .cbp-line[aria-current=true]{opacity:1;font-weight:600;background:#ffffff0d}#cbp-lyrics .cbp-line:hover{opacity:1}
         #cbp-lyrics .cbp-original{display:block}
-        #cbp-lyrics .cbp-translation{display:block;font-size:.7em;font-weight:450;line-height:1.45;margin-top:5px;opacity:1;color:inherit}
+        #cbp-lyrics .cbp-translation{display:block;font-size:.7em;font-weight:400;line-height:1.45;margin-top:5px;opacity:1;color:inherit}
         #cbp-lyrics .cbp-translation[hidden]{display:none}
         #cbp-lyrics [data-translation][aria-pressed=true]{background:#ffffff30;outline:1px solid currentColor}
         #cbp-lyrics .cbp-translation-status{font-size:12px;margin:0 0 6px}
-        #cbp-lyrics .cbp-line:has(.cbp-syllable){font-weight:650;opacity:1}
+        #cbp-lyrics .cbp-line:has(.cbp-syllable){font-weight:500;opacity:1}#cbp-lyrics .cbp-line[aria-current=true]:has(.cbp-syllable){font-weight:600}
         #cbp-lyrics .cbp-line[aria-current=true]:has(.cbp-syllable){opacity:1}
         #cbp-lyrics .cbp-syllable{--cbp-fill:0%;display:inline-block;white-space:pre;color:transparent;background:linear-gradient(var(--cbp-syllable-direction,90deg),var(--cbp-panel-ink,var(--cbp-lyric-ink,#fff)) var(--cbp-fill),var(--cbp-panel-muted-ink,var(--cbp-panel-ink,var(--cbp-lyric-ink,#fff))) var(--cbp-fill));background-clip:text;-webkit-background-clip:text;transition:transform .18s ease;transform:translateY(0)}
         #cbp-lyrics .cbp-syllable-active{transform:translateY(-1px)}
@@ -1031,9 +1030,21 @@ html body #main [data-cbp-clipped] {
         },
         releaseSpicyLoader(owner=this.spicyLoaderOwner) {
             if(owner!==this.spicyLoaderOwner)return;
+            this.spicyLoaderWait?.finish();
             if(this.spicyOpenedCard){const card=document.querySelector('#SpicyLyricsNPVCard');if(card&&!card.classList.contains('Collapsed'))card.querySelector('#NPVCardToggle')?.click();}
             if(this.spicyOpenedNPV){const button=document.querySelector('[data-testid="control-button-npv"]');if(button?.getAttribute('aria-pressed')==='true')button.click();}
             this.spicyOpenedCard=false;this.spicyOpenedNPV=false;this.spicyLoaderOwner=null;document.body.classList.remove('cbp-spicy-loading');
+        },
+        waitSpicyUpdate(owner) {
+            return new Promise(resolve=>{
+                let timer,wakeTimer,settled=false;
+                const finish=()=>{if(settled)return;settled=true;clearTimeout(timer);clearTimeout(wakeTimer);observer.disconnect();if(this.spicyLoaderWait?.owner===owner)this.spicyLoaderWait=null;resolve();};
+                const observer=new MutationObserver(records=>{
+                    if(!wakeTimer&&records.some(record=>(record.target instanceof Element?record.target:record.target.parentElement)?.closest('#SpicyLyricsNPVCard')||[...record.addedNodes].some(node=>node instanceof Element&&(node.id==='SpicyLyricsNPVCard'||node.querySelector('#SpicyLyricsNPVCard')))))wakeTimer=setTimeout(finish,20);
+                });
+                observer.observe(document.querySelector('#Desktop_PanelContainer_Id,aside.NowPlayingView,#main')||document.body,{childList:true,subtree:true,characterData:true});
+                this.spicyLoaderWait={owner,finish};timer=setTimeout(finish,400);
+            });
         },
         async readSpicy(uri) {
             const manager=window.SpicyLyrics?.db?.objectStores?.lyricsStore?.manager;
@@ -1067,18 +1078,19 @@ html body #main [data-cbp-clipped] {
                 let data;
                 if(source==='spicy'){
                     data=await this.readSpicy(uri);if(!current())return;
-                    if(!data)for(let i=0;i<60&&!data;i++){
-                        if(!current())return;this.ensureSpicyLoader(token);
-                        await new Promise(r=>setTimeout(r,400));if(!current())return;data=await this.readSpicy(uri);
-                        if(i===9)status.textContent='Ожидаю ответ Spicy Lyrics…';
+                    const started=Date.now();
+                    while(!data&&Date.now()-started<24000){
+                        if(!current())return;
+                        const update=this.waitSpicyUpdate(token);this.ensureSpicyLoader(token);
+                        await update;if(!current())return;data=await this.readSpicy(uri);
+                        if(Date.now()-started>=4000)status.textContent='Ожидаю ответ Spicy Lyrics…';
                     }
                     if(!data)throw Error('Spicy Lyrics не вернул текст. Проверь, что его карточка Lyrics включена в настройках расширения. Spotify можно выбрать отдельно.');
                 }else data=await this.spotifyPanelData(uri);
                 if(!current())return;
                 this.panelLyricLines=panelLines(data,source);
                 const language=data?.lyrics?.language||data?.Language||data?.language||'';
-                const text=this.panelLyricLines.map(l=>l.text).join(' ');
-                this.panelLyricLanguage=/^[a-z]{2,3}(?:-[a-z]{2})?$/i.test(language)?language.toLowerCase():/\p{Script=Cyrillic}/u.test(text)?'ru':/[a-z]/i.test(text)?'en':'autodetect';
+                this.panelLyricLanguage=this.lyricLanguage(language,this.panelLyricLines);
                 const syllableMode=this.panelLyricLines.some(l=>l.syllables.length);
                 this.panelHasSyllables=this.panelLyricLines.some(l=>l.syllables.length||l.background.length);
                 status.textContent=!this.panelLyricLines.length?'Для этой песни текст не найден':source==='spicy'?(syllableMode?'Spicy Lyrics · синхронизация по слогам':'Spicy Lyrics · источник дал только строки, без таймингов слогов'):'Spotify · синхронизация по строкам';
@@ -1136,6 +1148,23 @@ html body #main [data-cbp-clipped] {
         return code>0&&code<=0x10ffff&&!(code>=0xd800&&code<=0xdfff)?String.fromCodePoint(code):entity;
     });
     Object.assign(APP,{
+        lyricLanguage(value,lines) {
+            const tag=typeof value==='string'?value.trim().toLowerCase().replace(/_/g,'-'):'';
+            const aliases={eng:'en',english:'en',rus:'ru',russian:'ru',spa:'es',fra:'fr',fre:'fr',deu:'de',ger:'de',por:'pt',ita:'it',jpn:'ja',kor:'ko',zho:'zh',chi:'zh'};
+            const primary=tag.split('-')[0],language=aliases[primary]||primary;
+
+            // Some lyric sources return "und" even for English. Check the words
+            // before rejecting a song that the local EN→RU model can translate.
+            const text=lines.map(line=>line.text).join(' ').slice(0,16000);
+            if(/\p{Script=Cyrillic}/u.test(text)&&!/[a-z]/i.test(text))return 'ru';
+            const words=text.toLowerCase().match(/[a-z]+/g)||[];
+            const common=new Set(['i','you','your','me','my','we','the','and','is','it','that','to','of','for','with','not','but','this','have','on','in','can','be']);
+            const found=new Set(words.filter(word=>common.has(word)));
+            // Provider language tags can be wrong (e.g. English labeled pcm/sco).
+            if(found.size>=5&&words.filter(word=>common.has(word)).length/Math.max(1,words.length)>=.25)return 'en';
+            if(/^[a-z]{2,3}$/.test(language)&&!['und','unk','zxx','mul','xx','zz'].includes(language))return language;
+            return found.size>=3?'en':'autodetect';
+        },
         translationWithTone(source,translated) {
             // A phrasal verb, not a literal sexual verb. Do not rewrite unrelated profanity.
             const phrase=source.match(/\bfucking\s+(me|you|him|her|us|them)\s+up\b/i);
@@ -1518,7 +1547,7 @@ html body #main [data-cbp-clipped] {
             this.lyricsPanel.style.setProperty('--cbp-panel-muted-ink','#'+muted.map(c=>c.toString(16).padStart(2,'0')).join(''));
             this.lyricsPanel.style.setProperty('--cbp-panel-scrim',`rgba(0,0,0,${s.lyricsDim})`);
             this.lyricsPanel.style.setProperty('--cbp-panel-outline',light?'#000c':'#ffffffd9');
-            this.lyricsPanel.style.textShadow=light?'0 1px 2px #000e,0 0 5px #000b':'0 1px 2px #fffffff0,0 0 4px #ffffffc0';
+            this.lyricsPanel.style.textShadow=light?'0 1px 2px #0008':'0 1px 2px #ffffff99';
         },
         async playPanelURL(url,kind,signal) {
             this.clearPanelVideo();const video=this.newPanelVideo();video.style.opacity='0';

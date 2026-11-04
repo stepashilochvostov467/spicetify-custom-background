@@ -55,9 +55,21 @@
         },
         releaseSpicyLoader(owner=this.spicyLoaderOwner) {
             if(owner!==this.spicyLoaderOwner)return;
+            this.spicyLoaderWait?.finish();
             if(this.spicyOpenedCard){const card=document.querySelector('#SpicyLyricsNPVCard');if(card&&!card.classList.contains('Collapsed'))card.querySelector('#NPVCardToggle')?.click();}
             if(this.spicyOpenedNPV){const button=document.querySelector('[data-testid="control-button-npv"]');if(button?.getAttribute('aria-pressed')==='true')button.click();}
             this.spicyOpenedCard=false;this.spicyOpenedNPV=false;this.spicyLoaderOwner=null;document.body.classList.remove('cbp-spicy-loading');
+        },
+        waitSpicyUpdate(owner) {
+            return new Promise(resolve=>{
+                let timer,wakeTimer,settled=false;
+                const finish=()=>{if(settled)return;settled=true;clearTimeout(timer);clearTimeout(wakeTimer);observer.disconnect();if(this.spicyLoaderWait?.owner===owner)this.spicyLoaderWait=null;resolve();};
+                const observer=new MutationObserver(records=>{
+                    if(!wakeTimer&&records.some(record=>(record.target instanceof Element?record.target:record.target.parentElement)?.closest('#SpicyLyricsNPVCard')||[...record.addedNodes].some(node=>node instanceof Element&&(node.id==='SpicyLyricsNPVCard'||node.querySelector('#SpicyLyricsNPVCard')))))wakeTimer=setTimeout(finish,20);
+                });
+                observer.observe(document.querySelector('#Desktop_PanelContainer_Id,aside.NowPlayingView,#main')||document.body,{childList:true,subtree:true,characterData:true});
+                this.spicyLoaderWait={owner,finish};timer=setTimeout(finish,400);
+            });
         },
         async readSpicy(uri) {
             const manager=window.SpicyLyrics?.db?.objectStores?.lyricsStore?.manager;
@@ -91,18 +103,19 @@
                 let data;
                 if(source==='spicy'){
                     data=await this.readSpicy(uri);if(!current())return;
-                    if(!data)for(let i=0;i<60&&!data;i++){
-                        if(!current())return;this.ensureSpicyLoader(token);
-                        await new Promise(r=>setTimeout(r,400));if(!current())return;data=await this.readSpicy(uri);
-                        if(i===9)status.textContent='Ожидаю ответ Spicy Lyrics…';
+                    const started=Date.now();
+                    while(!data&&Date.now()-started<24000){
+                        if(!current())return;
+                        const update=this.waitSpicyUpdate(token);this.ensureSpicyLoader(token);
+                        await update;if(!current())return;data=await this.readSpicy(uri);
+                        if(Date.now()-started>=4000)status.textContent='Ожидаю ответ Spicy Lyrics…';
                     }
                     if(!data)throw Error('Spicy Lyrics не вернул текст. Проверь, что его карточка Lyrics включена в настройках расширения. Spotify можно выбрать отдельно.');
                 }else data=await this.spotifyPanelData(uri);
                 if(!current())return;
                 this.panelLyricLines=panelLines(data,source);
                 const language=data?.lyrics?.language||data?.Language||data?.language||'';
-                const text=this.panelLyricLines.map(l=>l.text).join(' ');
-                this.panelLyricLanguage=/^[a-z]{2,3}(?:-[a-z]{2})?$/i.test(language)?language.toLowerCase():/\p{Script=Cyrillic}/u.test(text)?'ru':/[a-z]/i.test(text)?'en':'autodetect';
+                this.panelLyricLanguage=this.lyricLanguage(language,this.panelLyricLines);
                 const syllableMode=this.panelLyricLines.some(l=>l.syllables.length);
                 this.panelHasSyllables=this.panelLyricLines.some(l=>l.syllables.length||l.background.length);
                 status.textContent=!this.panelLyricLines.length?'Для этой песни текст не найден':source==='spicy'?(syllableMode?'Spicy Lyrics · синхронизация по слогам':'Spicy Lyrics · источник дал только строки, без таймингов слогов'):'Spotify · синхронизация по строкам';

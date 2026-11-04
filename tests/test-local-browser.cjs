@@ -10,15 +10,17 @@ fs.mkdirSync('test-results',{recursive:true});
         page.on('pageerror',error=>errors.push(error.message));
         await page.route('https://cbp.test/**',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><html><body><div id="main"></div></body></html>'}));
         await page.goto('https://cbp.test/');
-        await page.evaluate(()=>{
-            window.currentSynthetic='A small violet fox walks near the quiet river.';
+        await page.evaluate(source=>{
+            window.testLyricSource=source;
+            window.SpicyLyrics={db:{objectStores:{lyricsStore:{manager:{get:async()=>({Type:'Syllable',Language:'und',Content:[{Lead:{StartTime:0,Syllables:currentSynthetic.split(' ').map((text,i)=>({Text:text,StartTime:i*.1,EndTime:(i+1)*.1}))}}]})}}}}};
+            window.currentSynthetic='I see a small violet fox and we walk near the quiet river.';
             window.Spicetify={LocalStorage:{get:key=>localStorage.getItem(key),set:(key,value)=>localStorage.setItem(key,value)},showNotification:()=>{},Topbar:{Button:class{constructor(){this.element=document.createElement('button');}}},Platform:{History:{location:{pathname:'/search'},listen:()=>()=>{}}},Player:{data:{item:{uri:'spotify:track:LOCALBROWSER',metadata:{}}},isPlaying:()=>false,getProgress:()=>1000,addEventListener:()=>{},seek:()=>{}},CosmosAsync:{get:async()=>({lyrics:{language:'en',syncType:'LINE_SYNCED',lines:[{startTimeMs:'0',words:currentSynthetic}]}})}};
             window.heartbeats=0;setInterval(()=>heartbeats++,100);
-        });
-        await page.addScriptTag({content:fs.readFileSync('custom-bg.js','utf8')});
+        },process.argv[4]||'spotify');
+        await page.addScriptTag({content:fs.readFileSync(process.argv[3]||'custom-bg.js','utf8')});
         await page.waitForFunction(()=>window.CBP?.app.panelBackdrop);
         const start=Date.now();
-        await page.evaluate(()=>{const a=CBP.app;a.translationCache=new Map();a.translationCachePromise=null;a.settings.lyricsSource='spotify';a.settings.lyricsTranslation=true;a.settings.lyricsTranslationEngine='local';a.render();});
+        await page.evaluate(()=>{const a=CBP.app;a.translationCache=new Map();a.translationCachePromise=null;a.settings.lyricsSource=testLyricSource;a.settings.lyricsTranslation=true;a.settings.lyricsTranslationEngine='local';a.render();});
         const translated=()=>{const el=document.querySelector('.cbp-translation');return el&&!el.hidden&&/[а-яё]/i.test(el.textContent);};
         await page.waitForFunction(translated,null,{timeout:240000});
         assert.ok(await page.evaluate(()=>heartbeats>=5),'UI should stay responsive during loading and inference');
@@ -28,7 +30,7 @@ fs.mkdirSync('test-results',{recursive:true});
         // Both the worker and the translation text are new. This cannot pass by
         // reusing the previous worker or the translated-line cache.
         await context.setOffline(true);const before=requests.length,offlineStart=Date.now();
-        await page.evaluate(async()=>{currentSynthetic='The bright green tree grows in the peaceful garden.';Spicetify.Player.data.item.uri='spotify:track:LOCALOFFLINE';CBP.app.settings.lyricsTranslation=true;await CBP.app.loadPanelLyrics(true);});
+        await page.evaluate(async()=>{currentSynthetic='The bright green tree grows in my peaceful garden.';Spicetify.Player.data.item.uri='spotify:track:LOCALOFFLINE';CBP.app.settings.lyricsTranslation=true;await CBP.app.loadPanelLyrics(true);});
         await page.waitForFunction(translated,null,{timeout:60000});
         assert.equal(requests.length,before,'cached model and runtime must work without any network requests');
         assert.ok((await page.locator('.cbp-original').textContent()).includes('bright green tree'));
