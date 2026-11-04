@@ -33,10 +33,9 @@ fs.mkdirSync('test-results', {recursive:true});
         ok(!('visualizer' in CBP.normalize({visualizer:'wave'}))&&!a.connectAudio&&!document.querySelector('#cbp-visualizer'),'visualizer and audio capture removed');
         a.showMenu(true);await a.render();
         ok(a.bg.querySelector('img'),'image background rendered');
-        a.menu.querySelector('#cbp-preset-name').value='Animated';await a.savePreset();
-        const id=a.activePreset;const bundle=await a.presetBundle(id);
+        const bundle=await a.appearanceBundle();
         ok(!('transitions' in bundle.settings),'removed transition setting is not exported');
-        await a.importPreset(bundle);ok(a.settings.dim===bundle.settings.dim,'preset imported');
+        await a.importAppearance(bundle);ok(a.settings.dim===bundle.settings.dim,'preset imported');
         const prev=a.media;await a.queueImage(testImage+' ',++a.imageToken);
         ok(a.media!==prev&&a.bg.children.length===1&&!prev.isConnected,'background changes immediately with no crossfade layer');
         await a.queueImage('',++a.imageToken);ok(!a.media&&!a.theme.textContent,'background removal resets theme');
@@ -45,7 +44,7 @@ fs.mkdirSync('test-results', {recursive:true});
         const recorded=new Promise(resolve=>{rec.ondataavailable=e=>chunks.push(e.data);rec.onstop=()=>resolve(new Blob(chunks,{type:'video/webm'}));});rec.start();for(let i=0;i<6;i++){cv.getContext("2d").fillStyle=i%2?"red":"blue";cv.getContext("2d").fillRect(0,0,32,32);await new Promise(r=>setTimeout(r,100));}rec.stop();const blob=await recorded;stream.getTracks().forEach(t=>t.stop());
         const video=await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(blob);});
         await a.queueImage(video,++a.imageToken);ok(a.media.tagName==='VIDEO'&&a.media.muted&&a.media.loop,'video is muted and looped');
-        await a.importPreset({format:'custom-background-preset',version:1,name:'Video',settings:{motion:true},image:video});ok(a.image===video,'video preset import validated');
+        await a.importAppearance({format:'custom-background-preset',version:1,name:'Video',settings:{motion:true},image:video});ok(a.image===video,'video preset import validated');
 
 
         return checks;

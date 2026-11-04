@@ -22,7 +22,7 @@
                 try{
                     const mode=modal.querySelector('input:checked').value;
                     const settings=mode==='colors'?{...this.settings,...Object.fromEntries(['blur','dim','zoom','x','y','readable','accent','custom','colorMode','color','trackColor','buttonColor'].map(k=>[k,s[k]]))}:s;
-                    await this.importPreset({...bundle,settings});close();
+                    await this.importAppearance({...bundle,settings});close();
                 }catch(error){modal.querySelector('[role="status"]').textContent=error.message;button.disabled=false;}
             };
             document.body.append(modal);this.importPreview=modal;modal.querySelector('input').focus();return modal;

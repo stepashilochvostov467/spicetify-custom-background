@@ -1,8 +1,8 @@
 {
   "name": "spicetify-custom-background",
-  "version": "4.4.0",
+  "version": "4.5.0",
   "private": true,
-  "description": "Custom Spotify backgrounds, glass panels, presets, Canvas, Spicy Lyrics syllable sync and Russian translation.",
+  "description": "Custom Spotify backgrounds, glass panels, appearance import/export, Canvas, Spicy Lyrics syllable sync and Russian translation.",
   "repository": "github:stepashilochvostov467/spicetify-custom-background",
   "homepage": "https://github.com/stepashilochvostov467/spicetify-custom-background#readme",
   "bugs": "https://github.com/stepashilochvostov467/spicetify-custom-background/issues",

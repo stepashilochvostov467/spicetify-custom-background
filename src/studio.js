@@ -99,7 +99,8 @@
             if(this.lyricsPanel){this.loadPanelLyrics();this.updateLyricsClock();this.refreshPanelBackdrop();}
         },
         renderStudio() {
-            const s=this.settings, fonts={default:'inherit',system:'system-ui,sans-serif'};
+            const s=this.settings;const controlInk=luminance(s.buttonColor.match(/[0-9a-f]{2}/gi).map(v=>parseInt(v,16)))>.3?'#101828':'#ffffff';
+            const fonts={default:'inherit',system:'system-ui,sans-serif'};
             const styleKey=JSON.stringify(Object.keys(STUDIO_DEFAULTS).map(k=>s[k]))+':'+this.effectColor;
             if(styleKey===this.studioKey)return;this.studioKey=styleKey;
             const css=[];
@@ -115,7 +116,7 @@
                 #main :is([data-encore-id="text"],.main-trackList-rowTitle){font-family:${fonts[s.font]}!important}
                 #main :is(.main-trackList-playingIndicator,.main-trackList-rowTitle[aria-current="true"],[data-testid="tracklist-row"][data-playing="true"] .main-trackList-rowTitle){color:${s.trackColor}!important}
                 #main .main-trackList-trackListRow:has(.main-trackList-playingIcon) .main-trackList-rowTitle{color:${s.trackColor}!important}
-                #main :is([data-testid="control-button-playpause"],.player-controls__buttons button[aria-label="Pause"],.player-controls__buttons button[aria-label="Play"]){background:${s.buttonColor}!important;color:#101828!important}
+                #main :is([data-testid="control-button-playpause"],.player-controls__buttons button[aria-label="Pause"],.player-controls__buttons button[aria-label="Play"]){background:${s.buttonColor}!important;color:${controlInk}!important}
                 #main :is(.main-nowPlayingWidget-coverArt,.main-nowPlayingWidget-coverArt img){width:${s.playerCover}px!important;height:${s.playerCover}px!important;border-radius:${s.coverRadius}px!important}
                 #main .playback-bar :is(.progress-bar__bg,.progress-bar__fg,.progress-bar__fg_wrapper){height:${s.progressHeight}px!important}
                 #cbp-lyrics{--cbp-lyric-ink:${this.effectColor||s.color};width:min(${s.lyricsWidth}px,90vw);font-size:${s.lyricsFont}px}
@@ -134,7 +135,7 @@
             document.body.append(editor);this.backgroundEditor=editor;this.editingBackground=true;
             const update=()=>{this.syncUI();this.render();editor.querySelector('output').textContent=`Масштаб ${Math.round(this.settings.zoom)}% · X ${Math.round(this.settings.x)} · Y ${Math.round(this.settings.y)}`;};
             editor.querySelector('[data-edit="dim"]').value=this.settings.dim*100;editor.querySelector('[data-edit="blur"]').value=this.settings.blur;
-            const finish=save=>{if(!save)Object.assign(this.settings,before);else{this.activePreset='';this.save();}editor.remove();document.removeEventListener('keydown',escape,true);this.backgroundEditor=null;this.editingBackground=false;update();this.showMenu(true);};
+            const finish=save=>{if(!save)Object.assign(this.settings,before);else{this.save();}editor.remove();document.removeEventListener('keydown',escape,true);this.backgroundEditor=null;this.editingBackground=false;update();this.showMenu(true);};
             const escape=e=>{if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();finish(false);}else if(e.key==='Tab'){const nodes=[...editor.querySelectorAll('button,input')];if(e.shiftKey&&document.activeElement===nodes[0]){e.preventDefault();nodes.at(-1).focus();}else if(!e.shiftKey&&document.activeElement===nodes.at(-1)){e.preventDefault();nodes[0].focus();}}};document.addEventListener('keydown',escape,true);
             editor.onclick=e=>{const a=e.target.closest('[data-editor]')?.dataset.editor;if(a)finish(a==='save');};
             editor.oninput=e=>{const k=e.target.dataset.edit;if(k){this.settings[k]=Number(e.target.value)/(k==='dim'?100:1);update();}};

@@ -31,9 +31,12 @@ const assert=require('node:assert/strict');
  await page.keyboard.press('Escape');await page.keyboard.press('Alt+b');
  assert.equal(await page.locator('#cbp-settings-menu details[open]').count(),0);
  await page.keyboard.press('Escape');await page.keyboard.press('Alt+p');
- await page.waitForFunction(()=>CBP.app.activePreset==='glass');
+ await page.waitForFunction(()=>!CBP.app.transferDialog.hidden);
+ const unchanged=await page.evaluate(()=>JSON.stringify(CBP.app.settings));
+ await page.keyboard.press('Alt+p');await page.waitForFunction(()=>CBP.app.transferDialog.hidden);
+ assert.equal(await page.evaluate(()=>JSON.stringify(CBP.app.settings)),unchanged);
  assert.equal(await page.locator('#cbp-settings-menu').getAttribute('hidden'),'');
- console.log('Real Alt+V toggles and persists lyrics; Russian layout and repeat work; Alt+P remains without a button; settings reopen collapsed');
+ console.log('Real Alt+V toggles and persists lyrics; Russian layout and repeat work; Alt+P toggles file transfer without changing appearance; settings reopen collapsed');
  const expected=await page.evaluate(async()=>{
   const a=CBP.app;
   for(const input of a.menu.querySelectorAll('[data-setting]')){
@@ -52,15 +55,24 @@ const assert=require('node:assert/strict');
  });
  // Save immediately after a real file-input upload, while decoding/storage may still be pending.
  await page.locator('#cbp-image-upload').setInputFiles({name:'test.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="80" height="60"><rect width="80" height="60" fill="#2277aa"/></svg>')});
- const saved=await page.evaluate(async()=>{const a=CBP.app;a.menu.querySelector('#cbp-preset-name').value='All preferences';await a.savePreset();return {id:a.activePreset,image:a.image};});
- assert.match(saved.image,/^data:image\/svg/);
+ const exported=await page.evaluate(()=>CBP.app.appearanceBundle());
+ assert.match(exported.image,/^data:image\/svg/);
  await page.reload();await load();await page.waitForFunction(()=>!!CBP.app.image);
  assert.deepEqual(await page.evaluate(()=>CBP.app.settings),expected);
- assert.equal(await page.evaluate(()=>CBP.app.activePreset),saved.id);
- assert.equal(await page.evaluate(()=>CBP.app.image),saved.image);
- const restored=await page.evaluate(async(id)=>{const a=CBP.app;await a.applyPreset('minimal');a.settings.rowHeight=41;a.settings.lyricsWidth=300;await a.queueImage('',++a.imageToken);await a.applyPreset(id);return {settings:a.settings,image:a.image,bundle:await a.presetBundle(id)};},saved.id);
- assert.deepEqual(restored.settings,expected);assert.deepEqual(restored.bundle.settings,expected);assert.equal(restored.image,saved.image);assert.equal(restored.bundle.image,saved.image);
- console.log('All settings survive reload; active preset persists; custom preset restores every preference and the uploaded background');
+ assert.equal(await page.evaluate(()=>CBP.app.image),exported.image);
+ await page.keyboard.press('Alt+p');const downloaded=page.waitForEvent('download');
+ await page.getByRole('button',{name:'Сохранить в файл',exact:true}).click();
+ const download=await downloaded;const bundle=JSON.parse(fs.readFileSync(await download.path(),'utf8'));
+ assert.deepEqual(bundle.settings,expected);assert.equal(bundle.image,exported.image);
+ await page.evaluate(async()=>{const a=CBP.app;a.settings.rowHeight=41;a.settings.lyricsWidth=300;a.save();await a.queueImage('',++a.imageToken);});
+ await page.locator('#cbp-import').setInputFiles({name:'old-format.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(bundle))});
+ await page.getByRole('button',{name:'Импортировать и применить',exact:true}).click();
+ await page.waitForFunction(()=>!CBP.app.importPreview);
+ assert.deepEqual(await page.evaluate(()=>CBP.app.settings),expected);assert.equal(await page.evaluate(()=>CBP.app.image),exported.image);
+ await page.reload();await load();await page.waitForFunction(()=>!!CBP.app.image);
+ assert.deepEqual(await page.evaluate(()=>CBP.app.settings),expected);
+ assert.equal(await page.locator('#cbp-presets,#cbp-preset-name').count(),0);
+ console.log('All settings and wallpaper survive reload; real JSON download and old-format file import restore every preference without saved preset lists');
  assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});

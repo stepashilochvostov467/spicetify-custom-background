@@ -1,9 +1,9 @@
 # Custom Background for Spicetify
 
-Свой Spotify: фоны, стеклянные панели, пресеты и штатные тексты песен.
-Your Spotify: custom backgrounds, glass panels, presets and native lyrics.
+Свой Spotify: фоны, стеклянные панели, файлы оформлений и тексты песен.
+Your Spotify: custom backgrounds, glass panels, appearance files and lyrics.
 
-[Русский](#русский) · [English](#english) · **4.4.0**
+[Русский](#русский) · [English](#english) · **4.5.0**
 
 Версия **с выбором Spicy Lyrics или Spotify**. [Native без сторонних расширений](https://github.com/stepashilochvostov467/spicetify-custom-background-native).
 
@@ -16,14 +16,14 @@ Your Spotify: custom backgrounds, glass panels, presets and native lyrics.
 - Свой фон: картинки, GIF и видео MP4/WebM без звука до 30 МБ.
 - Масштаб, положение, размытие и затемнение фона.
 - Отдельные настройки стеклянных панелей медиатеки, центра и плеера.
-- Свой или автоматически подобранный цвет текста.
+- Свой или автоматически подобранный цвет текста, кнопок и иконок. У иконок контрастная тень, у кнопки воспроизведения — светлый или тёмный значок по цвету заливки.
 - Spicy Lyrics: автоматическая загрузка, плавная подсветка слогов с настоящими таймингами, основной и фоновый вокал.
 - Полноразмерная боковая панель текстов Spotify: подсветка текущей строки, плавная прокрутка и перемотка нажатием.
 - Русский перевод под оригиналом: общая подсветка и прокрутка, выбранный цвет текста и локальный кэш переводов.
 - Фон панели текста: Canvas → доступное видео текущего трека → обложка. Видео заполняет панель без искажения пропорций и градиента, обложка под ним скрыта. Цвет текста и ровная контрастная подложка подстраиваются под фон самой панели.
 - Настройки обложек, размеров текста, строк и элементов плеера.
 - Скрытие подкастов и аудиокниг вместе с кнопками их разделов, рекомендаций, магазина и штатной правой панели.
-- Пресеты со своим фоном и полным набором настроек, экспорт и импорт с предпросмотром.
+- Alt+P: сохранить текущее оформление в JSON или импортировать файл с предпросмотром. Файл включает фон и все настройки; каталога встроенных и сохранённых стилей нет.
 
 В настройках доступны два источника текста. **Spicy Lyrics** должен быть установлен отдельно: расширение автоматически запускает его загрузку и использует настоящие тайминги слогов для плавного заполнения букв цветом. Если источник содержит только строки, показывается построчная синхронизация. **Spotify** работает без Spicy Lyrics, но предоставляет только строки. Скрытого переключения со Spicy Lyrics на Spotify нет.
 
@@ -42,7 +42,7 @@ spicetify config extensions custom-bg.js
 spicetify apply
 ```
 
-**Alt+B** — настройки, **Alt+V** — открыть или закрыть текст песни, **Alt+P** — следующее оформление (без отдельной кнопки). Все разделы настроек при открытии свёрнуты; изменения сохраняются автоматически. Своё оформление сохраняет весь набор настроек и фон. Встроенные стили сохраняют настройки интерфейса, плеера и текста.
+**Alt+B** — настройки, **Alt+V** — открыть или закрыть текст песни, **Alt+P** — импорт и экспорт текущего оформления. Все разделы настроек при открытии свёрнуты; изменения сохраняются автоматически. Кнопка «Сохранить в файл» выгружает JSON с фоном и всеми настройками. Старые файлы пресетов по-прежнему импортируются.
 
 ### Перевод песен
 
@@ -67,14 +67,14 @@ spicetify apply
 - Custom images, GIFs and muted looping MP4/WebM videos up to 30 MB.
 - Background framing, zoom, blur and dimming.
 - Independent glass settings for the library, main area and player.
-- Custom or automatically selected text colors.
+- Custom or automatically selected text, button and icon colors, contrast halos, and a light/dark foreground for the play button.
 - Spicy Lyrics: automatic loading, smooth syllable fill using actual timings, lead and backing vocals.
 - Full-height native Spotify lyric sidebar with line highlighting, smooth following and click-to-seek.
 - Russian translation below each original line, sharing its highlight, timing and selected color, with a local translation cache.
 - Sidebar backgrounds: Canvas → accessible current-track video → static cover. Videos fill the panel with centered cropping, preserving proportions without gradients or an underlying cover. Text color and a uniform contrast layer adapt to the sidebar media itself.
 - Cover, typography, track row and player sizing controls.
 - Hide podcasts and audiobooks including their navigation chips, recommendations, store links and Spotify's native sidebar.
-- Presets with their own backgrounds and complete settings, portable export and import preview.
+- Alt+P: export the current appearance to JSON or import a file with preview. Files contain the background and all settings; there is no built-in or saved preset catalog.
 
 Choose between two lyric sources. **Spicy Lyrics** must be installed separately: this extension automatically triggers its loader and uses actual syllable timings for smooth text fill. Line-only data remains line-synced. **Spotify** works without Spicy Lyrics and provides line timing only. Spicy mode never silently falls back to Spotify.
 
@@ -82,7 +82,7 @@ Choose between two lyric sources. **Spicy Lyrics** must be installed separately:
 
 Install desktop Spotify and [Spicetify](https://spicetify.app/docs/getting-started/). Download [custom-bg.js](https://raw.githubusercontent.com/stepashilochvostov467/spicetify-custom-background/main/custom-bg.js), copy it to Spicetify's Extensions directory, and run the commands above.
 
-**Alt+B** opens settings; **Alt+V** toggles lyrics; **Alt+P** switches presets without a dedicated button. Settings sections open collapsed and changes save automatically. Custom presets capture all settings and the background. Built-in styles preserve interface, player and lyric preferences.
+**Alt+B** opens settings; **Alt+V** toggles lyrics; **Alt+P** opens appearance import/export. Settings sections open collapsed and changes save automatically. Export writes a JSON file containing all current settings and the wallpaper. Old preset files remain importable.
 
 ### Russian translation
 
