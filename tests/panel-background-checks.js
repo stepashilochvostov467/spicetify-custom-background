@@ -67,6 +67,18 @@ async () => {
         ok(requests.slice(1).map(r=>r[0]).join(',')==='https://media.test/init-2.webm,https://media.test/seg-0-2.webm,https://media.test/seg-2-2.webm','Canvas selects WebM and builds segment URLs');
         ok(appended.length===3&&a.panelBackdrop.dataset.source==='canvas','Canvas buffers initialization and all segments');
     }finally{window.fetch=savedFetch;window.MediaSource=savedMediaSource;URL.createObjectURL=savedCreateURL;}
+    const player=document.createElement('div');player.dataset.testid='video-player-npv';const slowVideo=document.createElement('video');player.append(slowVideo);
+    let decoded=false,scanCount=0;Object.defineProperty(slowVideo,'readyState',{get:()=>decoded?2:0});
+    const savedFollow=a.followPanelVideo,savedFind=a.findPanelClip;
+    a.followPanelVideo=(source,kind)=>{if(source!==slowVideo||source.readyState<2)return false;a.panelClipSource=source;a.panelBackdrop.dataset.source=kind;return true;};
+    document.getElementById('main').append(player);
+    Spicetify.Player.data.item={uri:'spotify:track:SLOWCLIP',metadata:{image_url:testImage}};await a.refreshPanelBackdrop(true);
+    decoded=true;slowVideo.dispatchEvent(new Event('loadeddata'));
+    ok(a.panelBackdrop.dataset.source==='clip','slow native video is picked up when decoding completes without unrelated DOM changes');
+    await new Promise(r=>setTimeout(r,300));
+    a.findPanelClip=()=>{scanCount++;return savedFind.call(a);};const unrelated=document.createElement('span');unrelated.textContent='Track count';document.getElementById('main').append(unrelated);
+    await new Promise(r=>setTimeout(r,300));ok(scanCount===0,'unrelated Spotify DOM changes do not rescan video players');
+    a.findPanelClip=savedFind;a.followPanelVideo=savedFollow;player.remove();unrelated.remove();
     a.settings.lyricsSource='off';await a.render();ok(!a.panelVideo&&!a.panelBackdrop.children.length,'closing lyrics releases media');
     URL.revokeObjectURL(url);a.playPanelCanvas=originalCanvas;
     return checks;

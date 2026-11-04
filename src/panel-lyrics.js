@@ -18,7 +18,8 @@
     Object.assign(APP,{
         panelLines, lyricRequest:0,
         updateLyricsClock() {
-            const active=this.settings?.lyricsSource!=='off'&&!document.hidden&&playerValue('isPlaying',false);
+            if(this.clockLineSource!==this.panelLyricLines){this.clockLineSource=this.panelLyricLines;this.clockHasTimings=!!this.panelLyricLines?.some(line=>line.start!==null);}
+            const active=this.clockHasTimings&&this.settings?.lyricsSource!=='off'&&!document.hidden&&playerValue('isPlaying',false);
             const smooth=active&&this.panelHasSyllables&&!this.reduced.matches;
             if((!active||smooth)&&this.lyricsTimer){clearInterval(this.lyricsTimer);this.lyricsTimer=null;}
             if(!smooth&&this.lyricFrame){cancelAnimationFrame(this.lyricFrame);this.lyricFrame=0;this.panelClock=null;}
@@ -80,7 +81,7 @@
             if(!this.lyricsPanel)return;
             const source=this.settings.lyricsSource,uri=Spicetify.Player.data?.item?.uri||'',key=source+':'+uri;
             if(!force&&this.panelLyricKey===key){this.updatePanelTranslation();return;}this.panelLyricKey=key;this.releaseSpicyLoader();this.cancelPanelTranslation();
-            const token=++this.lyricRequest;this.panelLyricLines=[];this.panelLyricIndex=-1;this.panelSyllableNodes=[];this.panelClock=null;this.panelHasSyllables=false;
+            const token=++this.lyricRequest;this.panelLyricLines=[];this.panelLyricIndex=-1;this.clockLineSource=null;this.panelTimelineSource=null;this.panelTimeline=[];this.panelRowNodes=[];this.panelStateIndex=undefined;this.translationIdleLines=null;this.panelSyllableNodes=[];this.syllableCursor=null;this.panelClock=null;this.panelHasSyllables=false;
             const status=this.lyricsPanel.querySelector('[role="status"]'),list=this.lyricsPanel.querySelector('.cbp-lines');list.replaceChildren();list.scrollTop=0;this.updateLyricsClock();
             if(source==='off')return;
             if(!/^spotify:track:[a-zA-Z0-9]+$/.test(uri)){status.textContent='Включи песню, чтобы увидеть текст';return;}
@@ -125,24 +126,27 @@
         },
         syncPanelLyrics(progress=playerValue('getProgress')) {
             if(this.settings?.lyricsSource==='off'||!this.panelLyricLines?.length)return;
-            if(this.panelTimelineSource!==this.panelLyricLines){
-                this.panelTimelineSource=this.panelLyricLines;
-                this.panelTimeline=this.panelLyricLines.map((line,index)=>({start:line.start,index})).filter(l=>l.start!==null).sort((a,b)=>a.start-b.start||a.index-b.index);
-                this.panelList=this.lyricsPanel.querySelector('.cbp-lines');
-            }
-            let lo=0,hi=this.panelTimeline.length;
-            while(lo<hi){const mid=(lo+hi)>>>1;if(this.panelTimeline[mid].start<=progress)lo=mid+1;else hi=mid;}
-            const index=lo?this.panelTimeline[lo-1].index:-1,list=this.panelList;
-            if(index!==this.panelLyricIndex){
-                this.panelLyricIndex=index;
-                [...list.children].forEach((el,i)=>{el.setAttribute('aria-current',String(i===index));el.dataset.state=i<index?'past':i===index?'current':'future';});
-                const el=list.children[index];if(el)list.scrollTo({top:el.offsetTop-list.offsetTop-list.clientHeight/2+el.clientHeight/2,behavior:this.reduced.matches?'instant':'smooth'});
-            }
-            for(const word of this.panelSyllableNodes?.[index]||[]){
+            const index=this.syncPanelTimeline(progress);
+            this.syncPanelSyllables(index,progress);
+        },
+        syncPanelSyllables(index,progress) {
+            const source=this.panelSyllableNodes?.[index];if(!source?.length)return;
+            const update=(word)=>{
                 const fill=progress<word.start?0:word.end===word.start?1:clamp((progress-word.start)/(word.end-word.start),0,1),percent=Math.round(fill*1000)/10;
                 if(word.fill!==percent){word.fill=percent;word.el.style.setProperty('--cbp-fill',percent+'%');}
                 const active=progress>=word.start&&progress<word.end;
                 if(word.active!==active){word.active=active;word.el.classList.toggle('cbp-syllable-active',active);}
+            };
+            let state=this.syllableCursor;
+            if(!state||state.source!==source||progress<state.progress){
+                const nodes=source.slice().sort((a,b)=>a.start-b.start);
+                state=this.syllableCursor={source,nodes,next:0,active:new Set(),progress};
+                for(const word of nodes){update(word);if(word.start<=progress){state.next++;if(word.end>progress)state.active.add(word);}}
+            }else{
+                const nodes=state.nodes;
+                while(state.next<nodes.length&&nodes[state.next].start<=progress){const word=nodes[state.next++];update(word);if(word.end>progress)state.active.add(word);}
+                for(const word of state.active){update(word);if(word.end<=progress)state.active.delete(word);}
+                state.progress=progress;
             }
         }
     });

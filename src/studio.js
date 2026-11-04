@@ -23,15 +23,15 @@
         scanHomeFilters() {
             const root=document.querySelector('.Root__main-view,.R1kU6b2KxZc8FWfbYf3m')||document.querySelector('[data-testid="home-page"]');
             if(!root)return;
-            for(const el of root.querySelectorAll('[data-cbp-hide-chip]'))el.removeAttribute('data-cbp-hide-chip');
-            if(!this.settings.hidePodcasts)return;
+            const hidden=this.hiddenHomeChips||=new Set(),next=new Set();
+            if(!this.settings.hidePodcasts){for(const el of hidden)el.removeAttribute('data-cbp-hide-chip');hidden.clear();return;}
             const label=el=>(el.getAttribute('aria-label')||el.textContent||'').trim().toLocaleLowerCase();
             const controls=[...root.querySelectorAll('button,[role="tab"],[role="checkbox"],a[href]')];
             for(const button of controls){
                 if(!/^(?:подкасты(?: и шоу)?|аудиокниги|podcasts(?: & shows)?|audiobooks)$/.test(label(button)))continue;
                 const parent=button.parentElement;
                 const wrapper=parent?.children.length===1&&/^(?:DIV|SPAN)$/.test(parent.tagName)&&parent!==root?parent:button;
-                wrapper.setAttribute('data-cbp-hide-chip','');
+                next.add(wrapper);if(!hidden.has(wrapper))wrapper.setAttribute('data-cbp-hide-chip','');
                 const selected=['aria-pressed','aria-selected','aria-checked'].some(key=>button.getAttribute(key)==='true');
                 if(!selected){this.hiddenHomeSelection?.delete(button);continue;}
                 this.hiddenHomeSelection||=new WeakSet();if(this.hiddenHomeSelection.has(button))continue;
@@ -39,6 +39,8 @@
                 const all=[...(group||root).querySelectorAll('button,[role="tab"],[role="checkbox"],a[href]')].find(el=>/^(?:все|всё|all)$/.test(label(el)));
                 if(all){this.hiddenHomeSelection.add(button);all.click();}
             }
+            for(const el of hidden)if(!next.has(el))el.removeAttribute('data-cbp-hide-chip');
+            this.hiddenHomeChips=next;
         },
         scheduleHomeScan() {
             if(!this.settings?.hidePodcasts&&!this.settings?.hideRecommendations)return;
@@ -70,7 +72,7 @@
                 if(action==='edit-background')this.openBackgroundEditor();
                 if(action==='reset-interface'){for(const k of Object.keys(STUDIO_DEFAULTS).filter(k=>!k.startsWith('lyrics')))this.settings[k]=STUDIO_DEFAULTS[k];this.save();this.syncUI();this.render();}
             });
-            this.syncUI();
+            this.cacheSettingControls();this.syncUI();
         },
         syncReadyTrack(attempt=0) {
             clearTimeout(this.initialTrackTimer);this.initialTrackTimer=null;
@@ -95,7 +97,7 @@
             this.initPanelBackdrop();
             Spicetify.Player.addEventListener('songchange',()=>{this.loadPanelLyrics();this.syncReadyTrack();});
             Spicetify.Player.addEventListener('onplaypause',()=>{this.updateLyricsClock();this.syncPanelBackdropPlayback();});
-            Spicetify.Player.addEventListener('onprogress',()=>{if(!document.hidden&&this.settings.lyricsSource!=='off')this.syncPanelLyrics();});
+            Spicetify.Player.addEventListener('onprogress',()=>{if(!document.hidden&&this.settings.lyricsSource!=='off'&&!this.lyricFrame&&!this.lyricsTimer)this.syncPanelLyrics();});
             document.addEventListener('visibilitychange',()=>{this.updateLyricsClock();this.syncPanelBackdropPlayback();this.updatePanelTranslation();});
             this.updateLyricsClock();this.syncReadyTrack();
         },
@@ -110,7 +112,7 @@
             const styleKey=JSON.stringify(Object.keys(STUDIO_DEFAULTS).map(k=>s[k]))+':'+this.effectColor;
             if(styleKey===this.studioKey)return;this.studioKey=styleKey;
             const css=[];
-            this.scanHomeShelves();css.push('#main :is([data-cbp-hide-section],[data-cbp-hide-chip]){display:none!important}');
+            const homeKey=s.hidePodcasts+':'+s.hideRecommendations;if(homeKey!==this.homeVisibilityKey){this.homeVisibilityKey=homeKey;this.scanHomeShelves();}css.push('#main :is([data-cbp-hide-section],[data-cbp-hide-chip]){display:none!important}');
             if(s.hidePodcasts)css.push('[data-testid="home-page"] :is(.Shelf,section):has(a[href^="/show/"],a[href^="/episode/"],a[href^="/audiobook/"],a[href^="/book/"],a[href^="/chapter/"]){display:none!important}');
             if(s.hideRecommendations)css.push('[data-testid="home-page"] :is([data-testid="recommendation-section"],[data-testid="recommended-section"],section[data-uri*="recommendation"],.Shelf:has(a[href^="/genre/recommended"])) {display:none!important}');
             if(s.hideStore)css.push('#main :is(a[href^="/store"],a[href*="spotify.com/premium"],[data-testid="upgrade-button"],[data-testid="premium-upsell-link"],[aria-label="Маркетплейс"],[aria-label="Marketplace"],[title="Marketplace"],[title="Маркетплейс"]){display:none!important}');
@@ -139,9 +141,10 @@
             const editor=document.createElement('section');editor.id='cbp-bg-editor';editor.setAttribute('role','dialog');editor.setAttribute('aria-label','Редактор фона');
             editor.innerHTML='<div class="cbp-editor-tools"><strong>Перетаскивай фон · колесо — масштаб</strong><button data-editor="save">Сохранить</button><button data-editor="cancel">Отмена · Esc</button><label>Затемнение <input aria-label="Затемнение" type="range" min="0" max="100" data-edit="dim"></label><label>Размытие <input aria-label="Размытие" type="range" min="0" max="50" data-edit="blur"></label><output></output></div>';
             document.body.append(editor);this.backgroundEditor=editor;this.editingBackground=true;
-            const update=()=>{this.syncUI();this.render();editor.querySelector('output').textContent=`Масштаб ${Math.round(this.settings.zoom)}% · X ${Math.round(this.settings.x)} · Y ${Math.round(this.settings.y)}`;};
+            const paint=()=>{this.syncUI();this.render();editor.querySelector('output').textContent=`Масштаб ${Math.round(this.settings.zoom)}% · X ${Math.round(this.settings.x)} · Y ${Math.round(this.settings.y)}`;};
+            let editorFrame=0;const update=()=>{if(!editorFrame)editorFrame=requestAnimationFrame(()=>{editorFrame=0;paint();});};
             editor.querySelector('[data-edit="dim"]').value=this.settings.dim*100;editor.querySelector('[data-edit="blur"]').value=this.settings.blur;
-            const finish=save=>{if(!save)Object.assign(this.settings,before);else{this.save();}editor.remove();document.removeEventListener('keydown',escape,true);this.backgroundEditor=null;this.editingBackground=false;update();this.showMenu(true);};
+            const finish=save=>{cancelAnimationFrame(editorFrame);editorFrame=0;if(!save)Object.assign(this.settings,before);else{this.save();}editor.remove();document.removeEventListener('keydown',escape,true);this.backgroundEditor=null;this.editingBackground=false;paint();this.showMenu(true);};
             const escape=e=>{if(e.key==='Escape'){e.preventDefault();e.stopImmediatePropagation();finish(false);}else if(e.key==='Tab'){const nodes=[...editor.querySelectorAll('button,input')];if(e.shiftKey&&document.activeElement===nodes[0]){e.preventDefault();nodes.at(-1).focus();}else if(!e.shiftKey&&document.activeElement===nodes.at(-1)){e.preventDefault();nodes[0].focus();}}};document.addEventListener('keydown',escape,true);
             editor.onclick=e=>{const a=e.target.closest('[data-editor]')?.dataset.editor;if(a)finish(a==='save');};
             editor.oninput=e=>{const k=e.target.dataset.edit;if(k){this.settings[k]=Number(e.target.value)/(k==='dim'?100:1);update();}};
@@ -151,7 +154,7 @@
                 this.settings.x=clamp(drag.sx-(e.clientX-drag.x)/Math.max(1,iw*scale-innerWidth)*100,0,100);this.settings.y=clamp(drag.sy-(e.clientY-drag.y)/Math.max(1,ih*scale-innerHeight)*100,0,100);update();};
             editor.onpointerup=editor.onpointercancel=()=>drag=null;
             editor.addEventListener('wheel',e=>{if(e.target.closest('.cbp-editor-tools'))return;e.preventDefault();this.settings.zoom=clamp(this.settings.zoom+(e.deltaY<0?5:-5),100,250);update();},{passive:false});
-            editor.querySelector('button').focus();update();
+            editor.querySelector('button').focus();paint();
         }
     });
     const STUDIO_CSS=`

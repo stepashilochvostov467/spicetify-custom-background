@@ -62,6 +62,19 @@ async () => {
     a.syncPanelLyrics(1500000);startReads=0;
     for(let i=0;i<100;i++)a.syncPanelLyrics(1500000+i);
     ok(startReads===0&&a.panelLyricIndex===1500,'animation reuses indexed line timings instead of scanning 2000 lines per frame');
-    a.panelLyricLines=originalLines;a.settings.lyricsSource='off';
+    const oldSyllables=a.panelSyllableNodes;let segmentReads=0;
+    const longLine=Array.from({length:1000},(_,i)=>({el:document.createElement('span'),get start(){segmentReads++;return i*1000;},end:(i+1)*1000}));
+    a.panelSyllableNodes=[longLine];a.syllableCursor=null;a.syncPanelSyllables(0,0);segmentReads=0;
+    for(let i=1;i<=200;i++)a.syncPanelSyllables(0,i);
+    ok(segmentReads<2000,'smooth frames update active syllables instead of rescanning 1000 future syllables');
+    const overlap=[{start:100,end:600},{start:0,end:0},{start:0,end:300},{start:200,end:400}].map(word=>({...word,el:document.createElement('span')}));
+    a.panelSyllableNodes=[overlap];a.syllableCursor=null;
+    for(const time of [0,150,350,800,250,0,600,199,450]){
+        a.syncPanelSyllables(0,time);
+        ok(overlap.every(word=>word.fill===Math.round((time<word.start?0:word.end===word.start?1:Math.max(0,Math.min(1,(time-word.start)/(word.end-word.start))))*1000)/10),'overlapping and zero-duration syllables follow seek timestamp '+time);
+    }
+    a.panelSyllableNodes=oldSyllables;a.panelLyricLines=originalLines;a.settings.lyricsSource='off';await a.loadPanelLyrics(true);
+    ok(!a.syllableCursor&&a.panelRowNodes.length===0,'closing lyrics releases old row and syllable references');
+
     return checks;
 }

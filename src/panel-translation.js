@@ -17,13 +17,12 @@
             return translated.replace(new RegExp(pronoun+'\\s+'+wrong,'gi'),pronoun+' '+verb).replace(new RegExp(wrong+'\\s+'+pronoun,'gi'),verb+' '+pronoun);
         },
         translationChunks(text) {
-            const chunks=[],encoder=new TextEncoder();let chunk='';
+            const chunks=[];let chunk='',bytes=0;
+            const length=text=>{let n=0;for(const c of text){const p=c.codePointAt(0);n+=p<=127?1:p<=2047?2:p<=65535?3:4;}return n;};
             for(const char of text){
-                while(encoder.encode(chunk+char).length>480){
-                    const space=chunk.lastIndexOf(' ');
-                    if(space>0){chunks.push(chunk.slice(0,space));chunk=chunk.slice(space+1);}else{chunks.push(chunk);chunk='';}
-                }
-                chunk+=char;
+                const p=char.codePointAt(0),size=p<=127?1:p<=2047?2:p<=65535?3:4;
+                while(bytes+size>480){const space=chunk.lastIndexOf(' ');if(space>0){chunks.push(chunk.slice(0,space));chunk=chunk.slice(space+1);bytes=length(chunk);}else{chunks.push(chunk);chunk='';bytes=0;}}
+                chunk+=char;bytes+=size;
             }
             if(chunk.trim())chunks.push(chunk.trim());return chunks;
         },
@@ -68,13 +67,21 @@
         },
         async updatePanelTranslation() {
             const enabled=this.settings?.lyricsTranslation===true&&this.settings.lyricsSource!=='off';
-            const button=this.lyricsPanel?.querySelector('[data-translation]');if(button)button.setAttribute('aria-pressed',String(this.settings?.lyricsTranslation===true));
-            const nodes=this.lyricsPanel?.querySelectorAll('.cbp-translation');
-            if(!enabled){this.cancelPanelTranslation();nodes?.forEach(el=>el.hidden=true);return;}
-            if(document.hidden){this.cancelPanelTranslation();return;}
-            const lines=this.panelLyricLines;if(!lines?.length)return;
+            const button=this.translationButton||=this.lyricsPanel?.querySelector('[data-translation]');
+            const pressed=String(this.settings?.lyricsTranslation===true);if(button&&button.getAttribute('aria-pressed')!==pressed)button.setAttribute('aria-pressed',pressed);
+            const lines=this.panelLyricLines,hidden=document.hidden;
+            if(!enabled||hidden){
+                const state=enabled+':'+hidden;
+                if(this.translationIdleLines===lines&&this.translationIdleState===state)return;
+                this.translationIdleLines=lines;this.translationIdleState=state;this.cancelPanelTranslation();
+                if(!enabled)this.lyricsPanel?.querySelectorAll('.cbp-translation').forEach(el=>{if(!el.hidden)el.hidden=true;});
+                return;
+            }
+            this.translationIdleLines=null;this.translationIdleState=null;
+            if(!lines?.length)return;
             const language=this.panelLyricLanguage||'autodetect',engine=this.settings.lyricsTranslationEngine||'local',key=this.lyricRequest+':'+language+':'+engine;
             if(this.panelTranslationKey===key)return;
+            const nodes=this.lyricsPanel.querySelectorAll('.cbp-translation');
             this.cancelPanelTranslation();this.panelTranslationKey=key;
             const controller=new AbortController();this.panelTranslationAbort=controller;const signal=controller.signal;
             const current=()=>!signal.aborted&&this.panelLyricLines===lines&&this.settings.lyricsTranslation===true&&this.settings.lyricsSource!=='off';
@@ -86,15 +93,20 @@
             status.textContent=engine==='local'?'Готовлю локальный перевод…':'Перевожу на русский · MyMemory…';
             const cacheKey=text=>(engine==='local'?'local-enru-v2:':'')+language+'\n'+text;
             let completed=0,failed=0,quota=false,firstError='';
-            const apply=(text,translation)=>{if(!current())return;const result=this.translationWithTone(text,translation);lines.forEach((line,i)=>{if(line.text!==text)return;const el=nodes[i];if(el){el.textContent=result;el.hidden=!result||result===text;}});};
+            const groups=new Map(),order=new Map(),at=Math.max(0,this.panelLyricIndex);
+            for(let i=0;i<lines.length;i++){
+                const text=lines[i].text;if(!/\p{L}/u.test(text))continue;
+                let group=groups.get(text);if(!group){group=[];groups.set(text,group);}if(nodes[i])group.push(nodes[i]);
+                order.set(text,Math.min(order.get(text)??Infinity,Math.abs(i-at)));
+            }
+            const apply=(text,translation)=>{if(!current())return;const result=this.translationWithTone(text,translation);for(const el of groups.get(text)||[]){if(el.textContent!==result)el.textContent=result;const hide=!result||result===text;if(el.hidden!==hide)el.hidden=hide;}};
             try{
                 const cache=await this.getTranslationCache();if(!current())return;
-                const unique=[...new Set(lines.map(line=>line.text).filter(text=>/\p{L}/u.test(text)))];
+                const unique=[...groups.keys()];
                 const pending=[];
                 for(const text of unique){const cached=cache.get(cacheKey(text));if(cached&&Date.now()-cached.at<translationTTL){apply(text,cached.text);completed++;}else pending.push(text);}
                 // Translate near the playing line first, while keeping every result attached
                 // to its original row. Chorus repetitions share one request and cache entry.
-                const at=Math.max(0,this.panelLyricIndex),order=new Map(lines.map((line,i)=>[line.text,Math.abs(i-at)]));
                 pending.sort((a,b)=>(order.get(a)||0)-(order.get(b)||0));
                 let consumed=0;const queue=engine==='local'?pending:pending.filter(text=>{consumed+=text.length;return consumed<=16000;});
                 failed+=pending.length-queue.length;

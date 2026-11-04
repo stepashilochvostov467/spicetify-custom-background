@@ -86,7 +86,9 @@
             });
         }
     };
-    const luminance = (rgb) => rgb.map(v => { const c = v / 255; return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0);
+    const linearRGB=Float64Array.from({length:256},(_,v)=>{const c=v/255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4;});
+    const linearChannel=v=>Number.isInteger(v)&&v>=0&&v<=255?linearRGB[v]:(v/255<=.04045?v/255/12.92:((v/255+.055)/1.055)**2.4);
+    const luminance=rgb=>.2126*linearChannel(rgb[0])+.7152*linearChannel(rgb[1])+.0722*linearChannel(rgb[2]);
     const hex = rgb => "#" + rgb.map(v => clamp(Math.round(v), 0, 255).toString(16).padStart(2, "0")).join("");
     const decodeImage = src => new Promise((resolve, reject) => {
         const img = new Image();
@@ -98,6 +100,15 @@
         const scale = Math.max(width / iw, height / ih) * zoom / 100;
         const sw = width / scale, sh = height / scale;
         return [(iw - sw) * x / 100, (ih - sh) * y / 100, sw, sh];
+    }
+    function selectValue(values,index) {
+        let lo=0,hi=values.length-1;
+        while(lo<hi){
+            const pivot=values[(lo+hi)>>>1];let i=lo,j=hi;
+            while(i<=j){while(values[i]<pivot)i++;while(values[j]>pivot)j--;if(i<=j){const v=values[i];values[i++]=values[j];values[j--]=v;}}
+            if(index<=j)hi=j;else if(index>=i)lo=i;else break;
+        }
+        return values[index]||0;
     }
     function analyzePixels(data) {
         const rgb = [], buckets = new Map();
@@ -115,9 +126,14 @@
         const text = dominant.map(c => 232 + c / 255 * 23);
         const textLum = luminance(text);
         // Use the 95th percentile of the visible crop; a 5:1 target leaves margin.
-        const percentile = (dim) => {
-            const values = rgb.map(p => luminance(p.map(c => c * (1 - dim)))).sort((a, b) => a - b);
-            return values[Math.min(values.length - 1, Math.floor(values.length * 0.95))] || 0;
+        const values=new Float64Array(rgb.length),dimLinear=new Float64Array(256),at=Math.min(rgb.length-1,Math.floor(rgb.length*.95));
+        const percentile=dim=>{
+            const scale=1-dim;
+            for(let i=0;i<256;i++)dimLinear[i]=linearChannel(i*scale);
+            for(let i=0;i<rgb.length;i++){
+                const p=rgb[i];values[i]=.2126*(Number.isInteger(p[0])?dimLinear[p[0]]:linearChannel(p[0]*scale))+.7152*(Number.isInteger(p[1])?dimLinear[p[1]]:linearChannel(p[1]*scale))+.0722*(Number.isInteger(p[2])?dimLinear[p[2]]:linearChannel(p[2]*scale));
+            }
+            return at>=0?selectValue(values,at):0;
         };
         let lo = 0, hi = 0.9;
         for (let i = 0; i < 12; i++) {
@@ -149,7 +165,7 @@
         async render() {
             const token = ++this.revision;
             const s = this.settings;
-            if (this.image && !this.image.startsWith("data:video/") && (s.readable || s.accent)) {
+            if (this.image && !this.image.startsWith("data:video/") && s.readable) {
                 const key = [s.zoom, s.x, s.y, innerWidth, innerHeight].join(":");
                 try {
                     const source = this.image;
@@ -157,8 +173,8 @@
                     if (token !== this.revision) return;
                     this.decoded = img;
                     if (key !== this.analysisKey || !this.sample) {
-                        const canvas = document.createElement("canvas"); canvas.width = 80; canvas.height = 50;
-                        const ctx = canvas.getContext("2d", { willReadFrequently: true });
+                        if(!this.analysisCanvas){this.analysisCanvas=document.createElement("canvas");this.analysisCanvas.width=80;this.analysisCanvas.height=50;this.analysisContext=this.analysisCanvas.getContext("2d",{willReadFrequently:true});}
+                        const ctx=this.analysisContext;
                         ctx.fillStyle = "#121212"; ctx.fillRect(0, 0, 80, 50);
                         ctx.drawImage(img, ...cropRect(img.naturalWidth, img.naturalHeight, innerWidth, innerHeight, s.zoom, s.x, s.y), 0, 0, 80, 50);
                         this.sample = analyzePixels(ctx.getImageData(0, 0, 80, 50).data);
@@ -172,7 +188,7 @@
             }
             if (token !== this.revision) return;
             const automatic = s.readable && !!this.image;
-            const color = automatic || (s.accent && this.image) ? this.sample?.text || "#f7f8fc" : s.color;
+            const color = automatic ? this.sample?.text || "#f7f8fc" : s.color;
             const effectiveDim = automatic ? Math.max(s.dim, this.sample?.minDim || (this.image.startsWith("data:video/") ? .56 : 0)) : s.dim;
             let css='';
             if(this.image){
@@ -187,11 +203,12 @@
             if(this.theme.textContent!==css)this.theme.textContent=css;
             this.renderBackground();
 
-            const info = this.menu.querySelector("#cbp-auto-info");
-            info.textContent = automatic ? `Автозатемнение: ${Math.round(effectiveDim * 100)}% · текст ${color.toUpperCase()}` : "Автоподбор учитывает видимую часть картинки и добавляет затемнение при необходимости.";
-            this.menu.querySelector("#cbp-color").disabled = s.colorMode!=="custom";
+            const info=this.ui.autoInfo;
+            const infoText=automatic ? `Автозатемнение: ${Math.round(effectiveDim * 100)}% · текст ${color.toUpperCase()}` : "Автоподбор учитывает видимую часть картинки и добавляет затемнение при необходимости.";
+            if(info.textContent!==infoText)info.textContent=infoText;
+            const colorInput=this.ui.color;if(colorInput.disabled!==(s.colorMode!=="custom"))colorInput.disabled=s.colorMode!=="custom";
             this.effectColor = color;
-            this.menu.style.setProperty("--cbp-ui-ink", color);
+            if(this.uiColor!==color){this.uiColor=color;this.menu.style.setProperty("--cbp-ui-ink",color);}
 
             this.syncStickyClipping();
         },
@@ -225,7 +242,7 @@
             this.menu = document.createElement("section"); this.menu.id = "cbp-settings-menu";
             this.menu.hidden = true; this.menu.setAttribute("role", "dialog"); this.menu.setAttribute("aria-modal", "true"); this.menu.setAttribute("aria-labelledby", "cbp-heading");
             this.menu.innerHTML = `
-                <header><div><small>CUSTOM BACKGROUND · 4.5.2</small><h2 id="cbp-heading">Твоё оформление</h2></div><button data-action="close" aria-label="Закрыть настройки">✕</button></header>
+                <header><div><small>CUSTOM BACKGROUND · 4.6.0</small><h2 id="cbp-heading">Твоё оформление</h2></div><button data-action="close" aria-label="Закрыть настройки">✕</button></header>
                 <details><summary>Фон и положение</summary>
                     <label class="cbp-upload">Выбрать картинку, GIF или видео<input id="cbp-image-upload" type="file" accept="image/*,video/mp4,video/webm"></label>
                     <p class="cbp-hint">До 30 МБ. Файл хранится локально. Видео воспроизводится без звука.</p>
@@ -248,23 +265,27 @@
                 <footer><span>Alt+B — настройки · Alt+V — текст песни</span></footer>`;
             this.backdrop = document.createElement("div"); this.backdrop.id = "cbp-menu-backdrop"; this.backdrop.hidden = true;
             document.body.append(this.backdrop, this.menu);
-            this.initTransferUI(); this.syncUI();
+            this.ui={autoInfo:this.menu.querySelector("#cbp-auto-info"),color:this.menu.querySelector("#cbp-color")};
+            this.cacheSettingControls();this.initTransferUI(); this.syncUI();
         },
         slider(label, key, min, max, step, unit) { return `<label class="cbp-slider"><span>${label}<output for="cbp-${key}" data-output="${key}"></output></span><input id="cbp-${key}" data-setting="${key}" data-unit="${unit}" type="range" min="${min}" max="${max}" step="${step}"></label>`; },
         toggle(key, label) { return `<label class="cbp-toggle"><input id="cbp-${key}" data-setting="${key}" type="checkbox"><span>${label}</span></label>`; },
-        syncUI() {
-            for (const input of this.menu.querySelectorAll("[data-setting]")) {
-                const key = input.dataset.setting;
-                if (input.type === "checkbox") input.checked = this.settings[key];
-                else if (input.type === "color") input.value = this.settings[key];
-                else if (input.tagName === "SELECT") input.value = this.settings[key];
-                else {
-                    const value = this.settings[key] * (["dim", "cards", "libraryDim", "centerDim", "playerDim", "lyricsDim"].includes(key) ? 100 : 1);
-                    input.value = value;
-                    this.menu.querySelector(`[data-output="${key}"]`).textContent = `${Math.round(value)}${input.dataset.unit}`;
+        cacheSettingControls() {
+            this.settingControls=new Map();
+            for(const input of this.menu.querySelectorAll('[data-setting]'))this.settingControls.set(input.dataset.setting,{input,output:this.menu.querySelector('[data-output="'+input.dataset.setting+'"]')});
+        },
+        syncUI(changed) {
+            const controls=changed?[this.settingControls.get(changed)]:this.settingControls.values();
+            for(const control of controls){
+                if(!control)continue;const {input,output}=control,key=input.dataset.setting;
+                if(input.type==='checkbox'){if(input.checked!==this.settings[key])input.checked=this.settings[key];}
+                else if(input.type==='color'||input.tagName==='SELECT'){if(input.value!==this.settings[key])input.value=this.settings[key];}
+                else{
+                    const value=this.settings[key]*(['dim','cards','libraryDim','centerDim','playerDim','lyricsDim'].includes(key)?100:1),text=Math.round(value)+input.dataset.unit;
+                    if(Number(input.value)!==value)input.value=value;if(output.textContent!==text)output.textContent=text;
                 }
             }
-            this.menu.querySelector("#cbp-color").value = this.settings.color;
+            if(this.ui.color.value!==this.settings.color)this.ui.color.value=this.settings.color;
         },
         showMenu(show = this.menu.hidden) {
             if(show&&!this.transferDialog?.hidden)this.showTransfer(false);
@@ -276,33 +297,25 @@
             this.settingsButton = new Spicetify.Topbar.Button("Оформление · Alt+B", "edit", () => this.showMenu(), false, true);
         },
         syncStickyClipping() {
-            const root = document.querySelector('.R1kU6b2KxZc8FWfbYf3m,.Root__main-view');
-            const viewport = root && ([...root.querySelectorAll('[data-overlayscrollbars-viewport],.os-viewport,.main-view-container__scroll-node')].find(el => el.scrollTop > 0)
-                || root.querySelector('[data-overlayscrollbars-viewport],.os-viewport')
-                || root.querySelector('.main-view-container__scroll-node'));
-            if (!viewport) return;
-            if(!this.image || viewport.scrollTop<=1){
-                for(const el of root.querySelectorAll('[data-cbp-clipped]')){el.removeAttribute('data-cbp-clipped');el.style.removeProperty('--cbp-clip-top');}
-                return;
+            let root=this.stickyRoot,viewport=this.stickyViewport;
+            if(!root?.isConnected)root=this.stickyRoot=document.querySelector('.R1kU6b2KxZc8FWfbYf3m,.Root__main-view');
+            if(!root)return;
+            if(!viewport?.isConnected||!root.contains(viewport))viewport=this.stickyViewport=([...root.querySelectorAll('[data-overlayscrollbars-viewport],.os-viewport,.main-view-container__scroll-node')].find(el=>el.scrollTop>0)||root.querySelector('[data-overlayscrollbars-viewport],.os-viewport,.main-view-container__scroll-node'));
+            if(!viewport)return;
+            const clipped=this.clippedElements||=new Set();
+            if(!this.image||viewport.scrollTop<=1){for(const el of clipped){el.removeAttribute('data-cbp-clipped');el.style.removeProperty('--cbp-clip-top');}clipped.clear();return;}
+            for(const el of clipped)if(!el.isConnected)clipped.delete(el);
+            const topbar=root.querySelector('.main-topBar-container'),edge=topbar?.getBoundingClientRect().bottom||viewport.getBoundingClientRect().top;
+            const header=root.querySelector('.rrn0EjHTu7eCxn9G0Rrc.iPo4a2lbrsxW9Iedav3h'),headerRect=header?.getBoundingClientRect();
+            const rowsEdge=headerRect&&headerRect.top<=edge+2?Math.max(edge,headerRect.bottom):edge,updates=[];
+            // Read geometry first; interleaving writes with the next row's measurement forces layout.
+            for(const el of viewport.querySelectorAll('[role="row"],.Shelf,h2,h3')){
+                if(el.querySelector('[role="columnheader"]')||el.closest('.main-topBar-container'))continue;
+                const rect=el.getBoundingClientRect(),cutoff=el.getAttribute('role')==='row'?rowsEdge:edge,clip=clamp(cutoff-rect.top,0,rect.height);
+                if(clip>0){const value=clip.toFixed(1)+'px';if(!clipped.has(el)||el.style.getPropertyValue('--cbp-clip-top')!==value)updates.push([el,value]);}
+                else if(clipped.has(el))updates.push([el,null]);
             }
-            const topbar = root.querySelector('.main-topBar-container');
-            const edge = topbar?.getBoundingClientRect().bottom || viewport.getBoundingClientRect().top;
-            const header = root.querySelector('.rrn0EjHTu7eCxn9G0Rrc.iPo4a2lbrsxW9Iedav3h');
-            const headerRect = header?.getBoundingClientRect();
-            const rowsEdge = headerRect && headerRect.top <= edge + 2 ? Math.max(edge, headerRect.bottom) : edge;
-            for (const el of viewport.querySelectorAll('[role="row"],.Shelf,h2,h3')) {
-                if (el.querySelector('[role="columnheader"]') || el.closest('.main-topBar-container')) continue;
-                const rect = el.getBoundingClientRect();
-                const cutoff = el.getAttribute('role') === 'row' ? rowsEdge : edge;
-                const clip = this.image && viewport.scrollTop > 1 ? clamp(cutoff - rect.top, 0, rect.height) : 0;
-                if (clip > 0) {
-                    el.setAttribute('data-cbp-clipped', '');
-                    el.style.setProperty('--cbp-clip-top', `${clip.toFixed(1)}px`);
-                } else if (el.hasAttribute('data-cbp-clipped')) {
-                    el.removeAttribute('data-cbp-clipped');
-                    el.style.removeProperty('--cbp-clip-top');
-                }
-            }
+            for(const [el,value] of updates){if(value!==null){el.setAttribute('data-cbp-clipped','');el.style.setProperty('--cbp-clip-top',value);clipped.add(el);}else{el.removeAttribute('data-cbp-clipped');el.style.removeProperty('--cbp-clip-top');clipped.delete(el);}}
         },
         bind() {
             let frame;
@@ -312,7 +325,7 @@
                 if (key) {
                     const value = el.type === "checkbox" ? el.checked : (el.tagName === "SELECT" || el.type === "color") ? el.value : Number(el.value) / (["dim", "cards", "libraryDim", "centerDim", "playerDim", "lyricsDim"].includes(key) ? 100 : 1);
                     this.settings = normalize({ ...this.settings, [key]: value }); if(key==='lyricsSource'&&value!=='off')this.settings.lyricsLastSource=value;
-                    this.syncUI(); this.save(); schedule();
+                    this.syncUI(key); this.save(); schedule();
                 } else if (el.id === "cbp-color") { this.settings.color = el.value; this.save(); schedule(); }
             });
             this.menu.addEventListener("click", e => {
@@ -362,7 +375,7 @@
             window.addEventListener("resize", () => { clearTimeout(resize); resize = setTimeout(() => this.render(), 180); });
             let clipFrame;
             const clipSoon = () => { cancelAnimationFrame(clipFrame); clipFrame = requestAnimationFrame(() => this.syncStickyClipping()); };
-            document.addEventListener('scroll', e => { if (e.target.matches?.('.main-view-container__scroll-node,[data-overlayscrollbars-viewport],.os-viewport')) clipSoon(); }, true);
+            document.addEventListener('scroll', e => { if(e.target.matches?.('.main-view-container__scroll-node,[data-overlayscrollbars-viewport],.os-viewport')){this.stickyViewport=e.target;clipSoon();} }, true);
             const content = document.querySelector('.R1kU6b2KxZc8FWfbYf3m,.Root__main-view');
             if (content) { this.clipObserver = new MutationObserver(()=>{clipSoon();this.scheduleHomeScan?.();}); this.clipObserver.observe(content, { childList: true, subtree: true }); }
         },
@@ -427,6 +440,6 @@
         try { await APP.init(); } catch (error) { APP.report(error); window.__cbpLoaded = false; }
     }
     // A small diagnostic surface for support and deterministic tests.
-    window.CBP = { version: "4.5.2", app: APP, normalize, cropRect, analyzePixels, luminance };
+    window.CBP = { version: "4.6.0", app: APP, normalize, cropRect, analyzePixels, luminance };
     boot();
 })();

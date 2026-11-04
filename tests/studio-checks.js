@@ -12,8 +12,10 @@ async () => {
     a.menu.querySelector('[data-setting="colorMode"]').value='standard';a.menu.querySelector('[data-setting="colorMode"]').dispatchEvent(new Event('input',{bubbles:true}));for(let i=0;i<50&&!a.menu.querySelector('#cbp-color').disabled;i++)await wait(20);
     ok(!a.settings.readable&&!a.settings.custom&&a.menu.querySelector('#cbp-color').disabled,'standard text mode disables automatic and custom color');
     ok(!a.lyricsTimer,'lyric clock stopped when lyrics are off');
-    a.settings.lyricsSource='spotify';Spicetify.Player.isPlaying=()=>true;a.updateLyricsClock();ok(!!a.lyricsTimer,'lyric clock starts with enabled lyrics and playback');
-    Spicetify.Player.isPlaying=()=>false;a.updateLyricsClock();ok(!a.lyricsTimer,'lyric clock stops on pause');a.settings.lyricsSource='off';
+    const clockLines=a.panelLyricLines;a.panelLyricLines=[{text:'Clock timing fixture',start:0}];a.settings.lyricsSource='spotify';Spicetify.Player.isPlaying=()=>true;a.updateLyricsClock();ok(!!a.lyricsTimer,'lyric clock starts with enabled lyrics and playback');
+    Spicetify.Player.isPlaying=()=>false;a.updateLyricsClock();ok(!a.lyricsTimer,'lyric clock stops on pause');a.panelLyricLines=[{text:'Static line',start:null}];Spicetify.Player.isPlaying=()=>true;a.updateLyricsClock();ok(!a.lyricsTimer&&!a.lyricFrame,'untimed lyrics do not start a useless playback clock');
+    a.panelLyricLines=[];a.updateLyricsClock();ok(!a.lyricsTimer&&!a.lyricFrame,'missing lyrics do not run a playback clock');
+    a.panelLyricLines=clockLines;Spicetify.Player.isPlaying=()=>false;a.settings.lyricsSource='off';
 
     const home=document.createElement('div');home.dataset.testid='home-page';
     home.innerHTML='<section class="Shelf" id="podcasts"><a href="/show/test">Подкаст</a></section><section data-testid="recommendation-section" id="recommendations">Советы</section><section id="music">Музыка</section>';

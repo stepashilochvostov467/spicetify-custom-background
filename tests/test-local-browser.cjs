@@ -3,7 +3,7 @@ const fs=require('node:fs');
 const assert=require('node:assert/strict');
 fs.mkdirSync('test-results',{recursive:true});
 (async()=>{
-    const context=await chromium.launchPersistentContext('test-results/local-translation-profile',{headless:true,channel:'chrome'});
+    const context=await chromium.launchPersistentContext(process.argv[2]||'test-results/local-translation-profile',{headless:true,channel:'chrome'});
     try{
         const page=await context.newPage(),requests=[],errors=[];
         context.on('request',request=>{if(request.url().startsWith('https:')&&!request.url().startsWith('https://cbp.test/'))requests.push({url:request.url(),body:request.postData()||''});});

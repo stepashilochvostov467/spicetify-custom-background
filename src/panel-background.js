@@ -20,33 +20,38 @@
             this.lyricsPanel.prepend(this.panelBackdrop);
             Spicetify.Player.addEventListener('songchange',()=>this.refreshPanelBackdrop(true));
             const root=document.getElementById('main');
-            this.panelVideoObserver=new MutationObserver(()=>{
+            this.panelVideoObserver=new MutationObserver(records=>{
                 if(this.settings.lyricsSource==='off'||document.hidden||this.panelBackdrop.dataset.source==='canvas')return;
-                clearTimeout(this.panelVideoCheck);this.panelVideoCheck=setTimeout(()=>this.findPanelClip(),250);
+                const changed=records.some(record=>record.type==='attributes'?record.target.tagName==='VIDEO':
+                    [...record.addedNodes].some(node=>node.nodeType===1&&(node.tagName==='VIDEO'||node.querySelector('video'))));
+                if(changed&&!this.panelVideoCheck)this.panelVideoCheck=setTimeout(()=>{this.panelVideoCheck=null;this.findPanelClip();},250);
             });
             this.panelObserverRoot=root;this.refreshPanelBackdrop();
         },
         clearPanelVideo() {
-            clearTimeout(this.panelContrastTimer);this.panelContrastTimer=null;
+            clearTimeout(this.panelContrastTimer);this.panelContrastTimer=null;this.panelClipReadyAbort?.abort();this.panelClipReadyAbort=null;
+            if(this.panelContrastSample?.media===this.panelVideo)this.panelContrastSample=null;
             if(this.panelVideo){this.panelVideo.pause();this.panelVideo.srcObject=null;this.panelVideo.removeAttribute('src');this.panelVideo.load();this.panelVideo.remove();this.panelVideo=null;}
             this.panelVideoStream?.getTracks().forEach(t=>t.stop());this.panelVideoStream=null;
-            if(this.panelVideoObjectURL)URL.revokeObjectURL(this.panelVideoObjectURL);this.panelVideoObjectURL=null;this.panelClipSource=null;
+            if(this.panelVideoObjectURL)URL.revokeObjectURL(this.panelVideoObjectURL);this.panelVideoObjectURL=null;this.panelClipSource=null;this.panelPlaybackVideo=null;this.panelWaitingSource=null;
         },
         syncPanelBackdropPlayback() {
-            if(!this.panelVideo)return;
-            if(document.hidden||this.settings.lyricsSource==='off'||!playerValue('isPlaying',false))this.panelVideo.pause();
-            else this.panelVideo.play().catch(()=>{});
+            const video=this.panelVideo;if(!video)return;
+            const playing=!document.hidden&&this.settings.lyricsSource!=='off'&&playerValue('isPlaying',false);
+            if(!playing){if(!video.paused)video.pause();}
+            else if(video.paused&&this.panelPlaybackVideo!==video){this.panelPlaybackVideo=video;video.play().catch(()=>{}).finally(()=>{if(this.panelPlaybackVideo===video)this.panelPlaybackVideo=null;});}
             this.updatePanelContrast();
-            clearTimeout(this.panelContrastTimer);
-            if(!document.hidden&&this.settings.lyricsSource!=='off'&&playerValue('isPlaying',false))this.panelContrastTimer=setTimeout(()=>this.syncPanelBackdropPlayback(),1800);
+            if(playing&&this.settings.colorMode!=='custom'){
+                if(!this.panelContrastTimer)this.panelContrastTimer=setTimeout(()=>{this.panelContrastTimer=null;this.syncPanelBackdropPlayback();},1800);
+            }else{clearTimeout(this.panelContrastTimer);this.panelContrastTimer=null;}
         },
         async refreshPanelBackdrop(force=false) {
             if(!this.panelBackdrop)return;
             const item=Spicetify.Player.data?.item,uri=item?.uri||'',enabled=this.settings.lyricsSource!=='off',key=enabled+':'+uri;
             if(!force&&key===this.panelBackdropKey){this.syncPanelBackdropPlayback();return;}
             this.panelBackdropKey=key;this.panelMediaAbort?.abort();this.panelMediaAbort=new AbortController();
-            const signal=this.panelMediaAbort.signal;this.panelCanvasPending=true;this.panelClipURL='';this.clearPanelVideo();clearTimeout(this.panelVideoCheck);this.panelVideoObserver.disconnect();
-            this.panelBackdrop.replaceChildren();this.panelBackdrop.dataset.source='cover';
+            const signal=this.panelMediaAbort.signal;this.panelCanvasPending=true;this.panelClipURL='';this.clearPanelVideo();clearTimeout(this.panelVideoCheck);this.panelVideoCheck=null;this.panelVideoObserver.disconnect();
+            this.panelContrastSample=null;this.panelBackdrop.replaceChildren();this.panelBackdrop.dataset.source='cover';
             if(!enabled){this.panelCanvasPending=false;return;}
             const meta=item?.metadata||{},cover=panelMediaURL(meta.image_xlarge_url||meta.image_large_url||meta.image_url||item?.album?.images?.[0]?.url);
             if(cover){const img=document.createElement('img');img.alt='';img.crossOrigin='anonymous';img.onload=()=>{if(this.panelBackdrop.contains(img))this.updatePanelContrast();};img.src=cover;this.panelBackdrop.append(img);}
@@ -76,28 +81,37 @@
         },
         updatePanelContrast() {
             if(!this.panelBackdrop||this.settings.lyricsSource==='off')return;
-            const media=this.panelVideo?.readyState>=2?this.panelVideo:this.panelBackdrop.querySelector('img');
-            let pixels;
-            try{
-                if(!media)throw Error('No media');
-                const w=media.videoWidth||media.naturalWidth,h=media.videoHeight||media.naturalHeight;if(!w||!h)throw Error('Not ready');
-                const canvas=this.panelContrastCanvas||=document.createElement('canvas');canvas.width=24;canvas.height=48;
-                const ctx=canvas.getContext('2d',{willReadFrequently:true}),ratio=(this.lyricsPanel.clientWidth||360)/(this.lyricsPanel.clientHeight||900);
-                const cropW=Math.min(w,h*ratio),cropH=Math.min(h,w/ratio);
-                ctx.drawImage(media,(w-cropW)/2,(h-cropH)/2,cropW,cropH,0,0,24,48);pixels=ctx.getImageData(0,0,24,48).data;
-            }catch{}
-            const lum=rgb=>{const v=rgb.map(c=>{c/=255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4;});return .2126*v[0]+.7152*v[1]+.0722*v[2];};
-            let mean=0;if(pixels)for(let i=0;i<pixels.length;i+=4)mean+=lum([...pixels.slice(i,i+3)])/(pixels.length/4);
-            const ink=this.settings.colorMode==='custom'?this.settings.color:(pixels&&mean>.45?'#10151d':'#f8faff');
-            const rgb=ink.match(/[0-9a-f]{2}/gi).map(x=>parseInt(x,16)),light=lum(rgb)>.179,scrim=light?0:255;
-            const contrast=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
-            // An opaque resting color avoids multiplying the row, syllable and translation opacity.
-            // Keep it close to the chosen ink, raising it when a muted midtone would be unreadable.
+            const s=this.settings;let mean=null;
+            if(s.colorMode!=='custom'){
+                const media=this.panelVideo?.readyState>=2?this.panelVideo:this.panelBackdrop.querySelector('img');
+                if(media){
+                    const iw=media.videoWidth||media.naturalWidth,ih=media.videoHeight||media.naturalHeight;
+                    const width=this.lyricsPanel.clientWidth||360,height=this.lyricsPanel.clientHeight||900,now=performance.now();
+                    let sample=this.panelContrastSample;
+                    const changed=!sample||sample.media!==media||sample.iw!==iw||sample.ih!==ih||sample.width!==width||sample.height!==height;
+                    const moving=media===this.panelVideo&&!media.paused&&!document.hidden&&sample&&!sample.failed&&now-sample.at>=1800;
+                    if(iw&&ih&&(changed||moving)){
+                        sample=this.panelContrastSample={media,iw,ih,width,height,at:now,mean:null,failed:false};
+                        try{
+                            if(!this.panelContrastCanvas){const canvas=this.panelContrastCanvas=document.createElement('canvas');canvas.width=24;canvas.height=48;this.panelContrastContext=canvas.getContext('2d',{willReadFrequently:true});}
+                            const ctx=this.panelContrastContext,ratio=width/height,cropW=Math.min(iw,ih*ratio),cropH=Math.min(ih,iw/ratio);
+                            ctx.drawImage(media,(iw-cropW)/2,(ih-cropH)/2,cropW,cropH,0,0,24,48);
+                            const pixels=ctx.getImageData(0,0,24,48).data;let sum=0;
+                            for(let i=0;i<pixels.length;i+=4)sum+=.2126*linearRGB[pixels[i]]+.7152*linearRGB[pixels[i+1]]+.0722*linearRGB[pixels[i+2]];
+                            sample.mean=sum/(pixels.length/4);
+                        }catch{sample.failed=true;}
+                    }
+                    if(sample?.media===media)mean=sample.mean;
+                }
+            }
+            const ink=s.colorMode==='custom'?s.color:mean!==null&&mean>.45?'#10151d':'#f8faff',key=ink+':'+s.lyricsDim;
+            if(this.panelContrastKey===key)return;this.panelContrastKey=key;
+            const rgb=ink.match(/[0-9a-f]{2}/gi).map(x=>parseInt(x,16)),light=luminance(rgb)>.179,scrim=light?0:255;
             let muted=rgb;
-            for(let weight=.82;weight<=1.001;weight+=.02){muted=rgb.map(c=>Math.round(c*weight+scrim*(1-weight)));if(contrast(muted,[scrim,scrim,scrim])>=4.5)break;}
+            for(let weight=.82;weight<=1.001;weight+=.02){muted=rgb.map(c=>Math.round(c*weight+scrim*(1-weight)));const m=luminance(muted);if((Math.max(m,scrim?1:0)+.05)/(Math.min(m,scrim?1:0)+.05)>=4.5)break;}
             this.lyricsPanel.style.setProperty('--cbp-panel-ink',ink);
             this.lyricsPanel.style.setProperty('--cbp-panel-muted-ink','#'+muted.map(c=>c.toString(16).padStart(2,'0')).join(''));
-            this.lyricsPanel.style.setProperty('--cbp-panel-scrim',`rgba(0,0,0,${this.settings.lyricsDim})`);
+            this.lyricsPanel.style.setProperty('--cbp-panel-scrim',`rgba(0,0,0,${s.lyricsDim})`);
             this.lyricsPanel.style.setProperty('--cbp-panel-outline',light?'#000c':'#ffffffd9');
             this.lyricsPanel.style.textShadow=light?'0 1px 2px #000e,0 0 5px #000b':'0 1px 2px #fffffff0,0 0 4px #ffffffc0';
         },
@@ -124,7 +138,14 @@
             if(!this.panelBackdrop||this.settings.lyricsSource==='off'||document.hidden||this.panelMediaAbort.signal.aborted||(this.panelBackdrop.dataset.source==='canvas'||this.panelCanvasPending))return;
             const signal=this.panelMediaAbort.signal;
             const source=document.querySelector('[data-testid="video-player-npv"] video,[data-testid="video-player"] video');
-            if(source&&source!==this.panelClipSource&&this.followPanelVideo(source,'clip',signal))return;
+            if(source&&source!==this.panelClipSource){
+                if(this.followPanelVideo(source,'clip',signal))return;
+                if(source.readyState<2&&this.panelWaitingSource!==source){
+                    this.panelClipReadyAbort?.abort();this.panelWaitingSource=source;
+                    const ready=this.panelClipReadyAbort=new AbortController();
+                    source.addEventListener('loadeddata',()=>{this.panelWaitingSource=null;this.findPanelClip();},{once:true,signal:AbortSignal.any([signal,ready.signal])});
+                }
+            }
             if(this.panelBackdrop.dataset.source==='clip')return;
             const meta=Spicetify.Player.data?.item?.metadata||{},url=panelMediaURL(meta.video_url||meta['video.url']||meta.music_video_url);
             if(url&&url!==this.panelClipURL){this.panelClipURL=url;this.playPanelURL(url,'clip',signal).catch(()=>{if(!signal.aborted){this.clearPanelVideo();this.panelBackdrop.dataset.source='cover';}});}
@@ -148,13 +169,17 @@
             const step=Number(part.segment_length)*1000,start=Number(part.start_time_millis),end=Number(part.end_time_millis);
             if(!(step>0&&end>start&&end-start<=60000))throw Error('Canvas bounds invalid');
             const urls=[build(manifest.initialization_template)];for(let t=start;t<end;t+=step){if(urls.length>60)throw Error('Canvas too large');urls.push(build(manifest.segment_template,Math.round(t/1000)));}
-            let bytes=0;const buffers=[];
-            for(const url of urls){if(new URL(url).protocol!=='https:')throw Error('Invalid media URL');const res=await fetch(url,{signal:requestSignal});if(!res.ok)throw Error('Canvas segment unavailable');const buffer=await res.arrayBuffer();bytes+=buffer.byteLength;if(bytes>20*1024*1024)throw Error('Canvas too large');buffers.push(buffer);}
             if(signal.aborted)throw Error('Cancelled');this.clearPanelVideo();const video=this.newPanelVideo();video.style.opacity='0';
             const media=new MediaSource(),objectURL=URL.createObjectURL(media);this.panelVideoObjectURL=objectURL;
             const opened=panelMediaEvent(media,'sourceopen',requestSignal);video.src=objectURL;await opened;
-            const buffer=media.addSourceBuffer(`video/webm; codecs="${profile.video_codec}"`);
-            for(const bytes of buffers){const updated=panelMediaEvent(buffer,'updateend',requestSignal);buffer.appendBuffer(bytes);await updated;}
+            const buffer=media.addSourceBuffer(`video/webm; codecs="${profile.video_codec}"`);let bytes=0;
+            // Append one fetched segment at a time instead of retaining the entire video twice.
+            for(const url of urls){
+                if(new URL(url).protocol!=='https:')throw Error('Invalid media URL');
+                const res=await fetch(url,{signal:requestSignal});if(!res.ok)throw Error('Canvas segment unavailable');
+                const data=await res.arrayBuffer();bytes+=data.byteLength;if(bytes>20*1024*1024)throw Error('Canvas too large');
+                const updated=panelMediaEvent(buffer,'updateend',requestSignal);buffer.appendBuffer(data);await updated;
+            }
             if(media.readyState==='open')media.endOfStream();if(signal.aborted)throw Error('Cancelled');
             video.style.opacity='1';this.panelBackdrop.dataset.source='canvas';this.syncPanelBackdropPlayback();
             video.onerror=()=>{if(this.panelVideo===video){this.clearPanelVideo();this.panelBackdrop.dataset.source='cover';this.findPanelClip();}};

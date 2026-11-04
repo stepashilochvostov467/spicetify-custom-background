@@ -16,7 +16,7 @@
         renderBackground() {
             const s=this.settings;
             if(this.bgSource!==this.image) {
-                this.bgSource=this.image;
+                this.bgSource=this.image;this.backgroundStyleKey=null;
                 const old=this.media;
                 if(this.image) {
                     const video=this.image.startsWith('data:video/');
@@ -29,7 +29,10 @@
                     media.onerror=()=>this.notify('Фон не удалось воспроизвести. Выбери другой файл.',true);
                 } else {for(const el of [...this.bg.children]){el.pause?.();el.remove();}this.media=null;}
             }
-            if(this.media){this.media.style.transform=`scale(${s.zoom/100})`;this.media.style.objectPosition=`${s.x}% ${s.y}%`;this.media.style.transformOrigin=`${s.x}% ${s.y}%`;this.media.style.filter=`blur(${s.blur}px)`;if(this.media.tagName==='VIDEO'&&!document.hidden&&!this.reduced.matches)this.media.play().catch(()=>{});else if(this.reduced.matches)this.media.pause?.();}
-            this.bg.style.display=this.image?'block':'none';
+            const styleKey=[this.imageToken,s.zoom,s.x,s.y,s.blur].join(':');
+            if(this.media&&styleKey!==this.backgroundStyleKey){this.backgroundStyleKey=styleKey;this.media.style.transform=`scale(${s.zoom/100})`;this.media.style.objectPosition=`${s.x}% ${s.y}%`;this.media.style.transformOrigin=`${s.x}% ${s.y}%`;this.media.style.filter=`blur(${s.blur}px)`;}
+            if(this.media?.tagName==='VIDEO'){const media=this.media;if(document.hidden||this.reduced.matches){if(!media.paused)media.pause();}else if(media.paused&&this.backgroundPlaybackVideo!==media){this.backgroundPlaybackVideo=media;media.play().catch(()=>{}).finally(()=>{if(this.backgroundPlaybackVideo===media)this.backgroundPlaybackVideo=null;});}}
+
+            const display=this.image?'block':'none';if(this.bg.style.display!==display)this.bg.style.display=display;
         }
     });
