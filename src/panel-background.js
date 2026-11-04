@@ -89,15 +89,17 @@
             const lum=rgb=>{const v=rgb.map(c=>{c/=255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4;});return .2126*v[0]+.7152*v[1]+.0722*v[2];};
             let mean=0;if(pixels)for(let i=0;i<pixels.length;i+=4)mean+=lum([...pixels.slice(i,i+3)])/(pixels.length/4);
             const ink=this.settings.colorMode==='custom'?this.settings.color:(pixels&&mean>.45?'#10151d':'#f8faff');
-            const rgb=ink.match(/[0-9a-f]{2}/gi).map(x=>parseInt(x,16)),light=lum(rgb)>.18,scrim=light?0:255;
-            let alpha=pixels?0:.65;
-            if(pixels)for(alpha=0;alpha<.78;alpha+=.03){
-                const scores=[];for(let i=0;i<pixels.length;i+=16){const bg=[0,1,2].map(n=>pixels[i+n]*(1-alpha)+scrim*alpha),text=bg.map((c,n)=>c*.26+rgb[n]*.74),a=lum(bg),b=lum(text);scores.push((Math.max(a,b)+.05)/(Math.min(a,b)+.05));}
-                scores.sort((a,b)=>a-b);if(scores[Math.floor(scores.length*.08)]>=4.5)break;
-            }
+            const rgb=ink.match(/[0-9a-f]{2}/gi).map(x=>parseInt(x,16)),light=lum(rgb)>.179,scrim=light?0:255;
+            const contrast=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+            // An opaque resting color avoids multiplying the row, syllable and translation opacity.
+            // Keep it close to the chosen ink, raising it when a muted midtone would be unreadable.
+            let muted=rgb;
+            for(let weight=.82;weight<=1.001;weight+=.02){muted=rgb.map(c=>Math.round(c*weight+scrim*(1-weight)));if(contrast(muted,[scrim,scrim,scrim])>=4.5)break;}
             this.lyricsPanel.style.setProperty('--cbp-panel-ink',ink);
-            this.lyricsPanel.style.setProperty('--cbp-panel-scrim',`rgba(${scrim},${scrim},${scrim},${alpha.toFixed(2)})`);
-            this.lyricsPanel.style.textShadow=light?'0 1px 3px #000a':'0 1px 2px #ffffff60';
+            this.lyricsPanel.style.setProperty('--cbp-panel-muted-ink','#'+muted.map(c=>c.toString(16).padStart(2,'0')).join(''));
+            this.lyricsPanel.style.setProperty('--cbp-panel-scrim',`rgba(0,0,0,${this.settings.lyricsDim})`);
+            this.lyricsPanel.style.setProperty('--cbp-panel-outline',light?'#000c':'#ffffffd9');
+            this.lyricsPanel.style.textShadow=light?'0 1px 2px #000e,0 0 5px #000b':'0 1px 2px #fffffff0,0 0 4px #ffffffc0';
         },
         async playPanelURL(url,kind,signal) {
             this.clearPanelVideo();const video=this.newPanelVideo();video.style.opacity='0';

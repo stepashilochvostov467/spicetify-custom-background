@@ -32,6 +32,8 @@ async () => {
     a.syncPanelLyrics(250);ok(spans[0].style.getPropertyValue('--cbp-fill')==='25%'&&spans[1].style.getPropertyValue('--cbp-fill')==='0%','backward seek resets syllable fills');
     ok(getComputedStyle(a.lyricsPanel).getPropertyValue('--cbp-lyric-ink').trim()==='#12ab34','lyrics use selected extension text color');
     ok(getComputedStyle(spans[0]).backgroundImage.includes('18, 171, 52'),'syllable gradient uses chosen color instead of white');
+    const resting=getComputedStyle(spans[1]);ok(!resting.backgroundImage.includes('color(srgb')&&resting.backgroundImage.includes('rgb('),'resting syllables use solid readable color instead of transparent black');
+    ok(getComputedStyle(spans[1].closest('.cbp-line')).opacity==='1','future syllable lines keep full opacity');
     Spicetify.Player.isPlaying=()=>true;a.updateLyricsClock();ok(!!a.lyricFrame&&!a.lyricsTimer,'smooth animation starts only for timed lyrics during playback');
     await wait(60);ok(parseFloat(spans[0].style.getPropertyValue('--cbp-fill'))>25,'animation frames interpolate progress');
     Spicetify.Player.isPlaying=()=>false;a.updateLyricsClock();ok(!a.lyricFrame&&!a.lyricsTimer,'pause stops all lyric animation callbacks');

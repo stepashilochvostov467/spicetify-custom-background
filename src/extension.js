@@ -225,7 +225,7 @@
             this.menu = document.createElement("section"); this.menu.id = "cbp-settings-menu";
             this.menu.hidden = true; this.menu.setAttribute("role", "dialog"); this.menu.setAttribute("aria-modal", "true"); this.menu.setAttribute("aria-labelledby", "cbp-heading");
             this.menu.innerHTML = `
-                <header><div><small>CUSTOM BACKGROUND · 4.5.0</small><h2 id="cbp-heading">Твоё оформление</h2></div><button data-action="close" aria-label="Закрыть настройки">✕</button></header>
+                <header><div><small>CUSTOM BACKGROUND · 4.5.2</small><h2 id="cbp-heading">Твоё оформление</h2></div><button data-action="close" aria-label="Закрыть настройки">✕</button></header>
                 <details><summary>Фон и положение</summary>
                     <label class="cbp-upload">Выбрать картинку, GIF или видео<input id="cbp-image-upload" type="file" accept="image/*,video/mp4,video/webm"></label>
                     <p class="cbp-hint">До 30 МБ. Файл хранится локально. Видео воспроизводится без звука.</p>
@@ -259,7 +259,7 @@
                 else if (input.type === "color") input.value = this.settings[key];
                 else if (input.tagName === "SELECT") input.value = this.settings[key];
                 else {
-                    const value = this.settings[key] * (["dim", "cards", "libraryDim", "centerDim", "playerDim"].includes(key) ? 100 : 1);
+                    const value = this.settings[key] * (["dim", "cards", "libraryDim", "centerDim", "playerDim", "lyricsDim"].includes(key) ? 100 : 1);
                     input.value = value;
                     this.menu.querySelector(`[data-output="${key}"]`).textContent = `${Math.round(value)}${input.dataset.unit}`;
                 }
@@ -310,7 +310,7 @@
             this.menu.addEventListener("input", e => {
                 const el = e.target, key = el.dataset.setting;
                 if (key) {
-                    const value = el.type === "checkbox" ? el.checked : (el.tagName === "SELECT" || el.type === "color") ? el.value : Number(el.value) / (["dim", "cards", "libraryDim", "centerDim", "playerDim"].includes(key) ? 100 : 1);
+                    const value = el.type === "checkbox" ? el.checked : (el.tagName === "SELECT" || el.type === "color") ? el.value : Number(el.value) / (["dim", "cards", "libraryDim", "centerDim", "playerDim", "lyricsDim"].includes(key) ? 100 : 1);
                     this.settings = normalize({ ...this.settings, [key]: value }); if(key==='lyricsSource'&&value!=='off')this.settings.lyricsLastSource=value;
                     this.syncUI(); this.save(); schedule();
                 } else if (el.id === "cbp-color") { this.settings.color = el.value; this.save(); schedule(); }
@@ -427,6 +427,6 @@
         try { await APP.init(); } catch (error) { APP.report(error); window.__cbpLoaded = false; }
     }
     // A small diagnostic surface for support and deterministic tests.
-    window.CBP = { version: "4.5.0", app: APP, normalize, cropRect, analyzePixels, luminance };
+    window.CBP = { version: "4.5.2", app: APP, normalize, cropRect, analyzePixels, luminance };
     boot();
 })();

@@ -73,6 +73,11 @@ const assert=require('node:assert/strict');
  assert.deepEqual(await page.evaluate(()=>CBP.app.settings),expected);
  assert.equal(await page.locator('#cbp-presets,#cbp-preset-name').count(),0);
  console.log('All settings and wallpaper survive reload; real JSON download and old-format file import restore every preference without saved preset lists');
+ await page.evaluate(()=>{const a=CBP.app;Spicetify.Player.data.item={metadata:{}};a.settings.lyricsSource='spotify';a.render();a.syncReadyTrack();});
+ await page.evaluate((image)=>{Spicetify.Player.data.item={uri:'spotify:track:LATESTART',metadata:{image_url:image}};},exported.image);
+ await page.waitForFunction(()=>CBP.app.lyricsPanel.querySelector('.cbp-line')&&CBP.app.panelBackdrop.querySelector('img'));
+ assert.equal(await page.evaluate(()=>CBP.app.initialTrackTimer),null);
+ console.log('Delayed Spotify track data automatically loads lyrics and the sidebar cover after startup');
  assert.deepEqual(errors,[]);
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exit(1)});

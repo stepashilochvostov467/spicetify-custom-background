@@ -11,6 +11,25 @@ async () => {
         await a.panelBackdrop.querySelector('img').decode();a.updatePanelContrast();
         ok(a.lyricsPanel.style.getPropertyValue('--cbp-panel-ink')===expected,'panel text adapts to its own '+name.toLowerCase()+' cover');
     }
+    const luminance=rgb=>rgb.map(v=>{const c=v/255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4;}).reduce((sum,c,i)=>sum+c*[.2126,.7152,.0722][i],0);
+    const ratio=(a,b)=>{const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+    a.settings.colorMode='custom';
+    for(const color of ['#979523','#777777','#12ab34'])for(const background of [0,255]){
+        a.settings.color=color;ctx.fillStyle=background?'#ffffff':'#000000';ctx.fillRect(0,0,80,80);
+        Spicetify.Player.data.item={uri:'spotify:track:CONTRAST'+color.slice(1)+background,metadata:{image_url:canvas.toDataURL()}};
+        await a.render();await a.refreshPanelBackdrop(true);await a.panelBackdrop.querySelector('img').decode();a.updatePanelContrast();
+        const muted=a.lyricsPanel.style.getPropertyValue('--cbp-panel-muted-ink').match(/[0-9a-f]{2}/gi).map(v=>parseInt(v,16));
+        const scrim=a.lyricsPanel.style.getPropertyValue('--cbp-panel-scrim').match(/[0-9.]+/g).map(Number),bg=[0,1,2].map(i=>background*(1-scrim[3])+scrim[i]*scrim[3]);
+        ok(scrim[3]===.12,'automatic contrast does not black out '+(background?'light':'dark')+' cover for '+color);
+        ok(muted.some(c=>c>60),'resting text keeps a visible solid color for '+color);
+        ok(a.lyricsPanel.style.getPropertyValue('--cbp-panel-outline')&&a.lyricsPanel.style.textShadow,'text has local contrast without a heavy full-panel overlay');
+        ok(a.lyricsPanel.style.getPropertyValue('--cbp-panel-ink')===color,'selected lyric color is preserved: '+color);
+    }
+    a.settings.lyricsDim=0;await a.render();ok(a.lyricsPanel.style.getPropertyValue('--cbp-panel-scrim')==='rgba(0,0,0,0)','panel dimming can be disabled completely');
+    a.settings.lyricsDim=.35;await a.render();ok(a.lyricsPanel.style.getPropertyValue('--cbp-panel-scrim')==='rgba(0,0,0,0.35)','panel dimming follows the explicit setting');
+    a.settings.lyricsDim=.12;await a.render();
+    const row=a.lyricsPanel.querySelector('.cbp-line');
+    ok(getComputedStyle(row).opacity==='1','lyric rows do not compound opacity with syllables or translations');
     const overlay=document.createElement('div');overlay.style.cssText='position:fixed;inset:0 0 auto;height:95px;z-index:1000;-webkit-app-region:drag';document.body.append(overlay);
     const close=a.lyricsPanel.querySelector('[data-close]'),rect=close.getBoundingClientRect();
     ok(document.elementFromPoint(rect.x+rect.width/2,rect.y+rect.height/2)===close,'header controls are above competing top-bar layers');
