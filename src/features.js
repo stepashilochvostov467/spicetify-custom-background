@@ -1,6 +1,8 @@
     Object.assign(APP, {
         async rememberPresetImage(id) {
             if (!this.presets().some(p => p.id === id)) return;
+            await this.mediaUpload;
+            await this.writeQueue;
             await images.run('readwrite', this.image, `cbp_preset_${id}`);
             this.presetImages[id] = true;
             storage.put('cbp_v2_preset_images', JSON.stringify(this.presetImages));

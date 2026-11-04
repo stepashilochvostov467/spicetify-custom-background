@@ -1,8 +1,8 @@
-    function panelLines(payload, source) {
+    function panelLines(payload, source='spotify') {
         if(typeof payload==='string'){try{payload=JSON.parse(payload);}catch{return [];}}
         const data=source==='spotify'?payload?.lyrics:payload;
         const list=source==='spotify'?data?.lines:data?.Content;if(!Array.isArray(list))return [];
-        const synced=source==='spotify'?data.syncType!=='UNSYNCED':data.Type!=='Static';
+        const synced=source==='spotify'?data.syncType==='LINE_SYNCED':data.Type!=='Static';
         const segments=voice=>Array.isArray(voice?.Syllables)?voice.Syllables.slice(0,500).filter(s=>s&&typeof s.Text==='string').map((s,i,all)=>({
             text:s.Text.slice(0,500),start:Number(s.StartTime)*1000,end:Number(s.EndTime)*1000,space:!s.IsPartOfWord&&i<all.length-1
         })).filter(s=>Number.isFinite(s.start)&&Number.isFinite(s.end)&&s.start>=0&&s.end>=s.start):[];
@@ -79,7 +79,7 @@
         async loadPanelLyrics(force=false) {
             if(!this.lyricsPanel)return;
             const source=this.settings.lyricsSource,uri=Spicetify.Player.data?.item?.uri||'',key=source+':'+uri;
-            if(!force&&this.panelLyricKey===key)return;this.panelLyricKey=key;this.releaseSpicyLoader();
+            if(!force&&this.panelLyricKey===key){this.updatePanelTranslation();return;}this.panelLyricKey=key;this.releaseSpicyLoader();this.cancelPanelTranslation();
             const token=++this.lyricRequest;this.panelLyricLines=[];this.panelLyricIndex=-1;this.panelSyllableNodes=[];this.panelClock=null;this.panelHasSyllables=false;
             const status=this.lyricsPanel.querySelector('[role="status"]'),list=this.lyricsPanel.querySelector('.cbp-lines');list.replaceChildren();list.scrollTop=0;this.updateLyricsClock();
             if(source==='off')return;
@@ -99,22 +99,27 @@
                 }else data=await this.spotifyPanelData(uri);
                 if(!current())return;
                 this.panelLyricLines=panelLines(data,source);
+                const language=data?.lyrics?.language||data?.Language||data?.language||'';
+                const text=this.panelLyricLines.map(l=>l.text).join(' ');
+                this.panelLyricLanguage=/^[a-z]{2,3}(?:-[a-z]{2})?$/i.test(language)?language.toLowerCase():/\p{Script=Cyrillic}/u.test(text)?'ru':/[a-z]/i.test(text)?'en':'autodetect';
                 const syllableMode=this.panelLyricLines.some(l=>l.syllables.length);
                 this.panelHasSyllables=this.panelLyricLines.some(l=>l.syllables.length||l.background.length);
                 status.textContent=!this.panelLyricLines.length?'Для этой песни текст не найден':source==='spicy'?(syllableMode?'Spicy Lyrics · синхронизация по слогам':'Spicy Lyrics · источник дал только строки, без таймингов слогов'):'Spotify · синхронизация по строкам';
                 const fragment=document.createDocumentFragment();
                 for(const line of this.panelLyricLines){
                     const el=document.createElement(line.start===null?'p':'button');el.className='cbp-line';el.dir='auto';const nodes=[];
+                    const original=document.createElement('span');original.className='cbp-original';
+                    const translated=document.createElement('span');translated.className='cbp-translation';translated.lang='ru';translated.dir='ltr';translated.hidden=true;el.append(original,translated);
                     const append=(parent,segments)=>{for(const segment of segments){const span=document.createElement('span');span.className='cbp-syllable';span.textContent=segment.text;parent.append(span);if(segment.space)parent.append(document.createTextNode(' '));nodes.push({el:span,...segment});}};
-                    if(line.syllables.length)append(el,line.syllables);else el.textContent=line.text;
-                    for(const voice of line.background){const bg=document.createElement('span');bg.className='cbp-backing';append(bg,voice);el.append(bg);}
+                    if(line.syllables.length)append(original,line.syllables);else original.textContent=line.text;
+                    for(const voice of line.background){const bg=document.createElement('span');bg.className='cbp-backing';append(bg,voice);original.append(bg);}
                     if(line.start!==null)el.onclick=()=>{this.panelClock=null;Spicetify.Player.seek(line.start);};
                     fragment.append(el);this.panelSyllableNodes.push(nodes);
                     const firstLetter=line.text.match(/\p{L}/u)?.[0]||'';
                     el.style.setProperty('--cbp-syllable-direction',/[\u0590-\u08ff\ufb1d-\ufdff\ufe70-\ufefc]/.test(firstLetter)?'270deg':'90deg');
                 }
                 list.append(fragment);
-                this.syncPanelLyrics();this.updateLyricsClock();
+                this.syncPanelLyrics();this.updateLyricsClock();this.updatePanelTranslation();
             }catch(error){if(current())status.textContent='Текст недоступен. '+(error.message||'Попробуй другой трек.');}
             finally{this.releaseSpicyLoader(token);}
         },

@@ -24,9 +24,8 @@
                     media.style.cssText='position:absolute;inset:0;width:100%;height:100%;object-fit:cover;pointer-events:none';
                     if(video){media.muted=true;media.loop=true;media.playsInline=true;}
                     media.src=this.image;this.bg.append(media);this.media=media;
-                    if(s.transitions&&!this.reduced.matches)media.animate([{opacity:0},{opacity:1}],{duration:700});
-                    const remove=()=>{old?.pause?.();old?.remove();};
-                    clearTimeout(this.mediaCleanup);this.mediaCleanup=setTimeout(()=>{remove();for(const el of [...this.bg.children])if(el!==this.media){el.pause?.();el.remove();}},750);
+                    old?.pause?.();old?.remove();
+                    for(const el of [...this.bg.children])if(el!==media){el.pause?.();el.remove();}
                     media.onerror=()=>this.notify('Фон не удалось воспроизвести. Выбери другой файл.',true);
                 } else {for(const el of [...this.bg.children]){el.pause?.();el.remove();}this.media=null;}
             }

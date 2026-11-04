@@ -1,14 +1,15 @@
 {
   "name": "spicetify-custom-background",
-  "version": "4.3.0",
+  "version": "4.4.0",
   "private": true,
-  "description": "Personal Spotify layouts, playlist themes, live backgrounds and synced lyrics for Spicetify",
+  "description": "Custom Spotify backgrounds, glass panels, presets, Canvas, Spicy Lyrics syllable sync and Russian translation.",
   "repository": "github:stepashilochvostov467/spicetify-custom-background",
   "homepage": "https://github.com/stepashilochvostov467/spicetify-custom-background#readme",
   "bugs": "https://github.com/stepashilochvostov467/spicetify-custom-background/issues",
   "scripts": {
     "build": "node scripts/build.cjs",
-    "test": "node tests/test-v3.cjs && node tests/test-v4.cjs && node tests/test-lyrics.cjs && node tests/test-panel-background.cjs && node tests/performance.cjs"
+    "test": "node tests/test-v3.cjs && node tests/test-v4.cjs && node tests/test-lyrics.cjs && node tests/test-settings.cjs && node tests/test-panel-background.cjs && node tests/test-translation.cjs && node tests/test-local-unit.cjs && node tests/test-panel-usability.cjs && node tests/performance.cjs",
+    "test:local": "node tests/test-local-browser.cjs"
   },
   "devDependencies": {
     "playwright": "^1.55.0"

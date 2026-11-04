@@ -38,6 +38,15 @@ async () => {
     Spicetify.Player.getProgress=()=>2200;a.syncPanelLyrics();ok(a.lyricsPanel.querySelector('[aria-current=true]').textContent==='Дальше','smooth line following still works');
     const plain=a.panelLines({Type:'Line',Content:[{Text:'Без слогов',StartTime:1}]},'spicy');
     ok(plain[0].syllables.length===0&&plain[0].start===1000,'line-only data remains honest without invented syllable timings');
+    const localTranslate=a.requestLocalRussianTranslation;
+    a.requestLocalRussianTranslation=async()=> 'Перевод строки';
+    SpicyLyrics.db.objectStores.lyricsStore.manager.get=async()=>({uri:payload.uri,Language:'en',Type:'Syllable',Content:[{Lead:{StartTime:0,Syllables:[{Text:'Hel',StartTime:0,EndTime:1,IsPartOfWord:true},{Text:'lo',StartTime:1,EndTime:2}]}}]});
+    a.settings.lyricsTranslation=true;await a.loadPanelLyrics(true);await wait(80);
+    ok(a.lyricsPanel.querySelector('.cbp-translation').textContent==='Перевод строки','Russian translation remains available alongside Spicy syllables');
+    a.syncPanelLyrics(500);ok(a.lyricsPanel.querySelector('.cbp-syllable').style.getPropertyValue('--cbp-fill')==='50%','translation does not replace or interrupt syllable animation');
+    a.settings.lyricsTranslation=false;a.requestLocalRussianTranslation=localTranslate;
+    a.togglePanelLyrics();ok(a.settings.lyricsLastSource==='spicy'&&a.settings.lyricsSource==='off','Alt+V remembers Spicy when closing');
+    a.togglePanelLyrics();ok(a.settings.lyricsSource==='spicy','Alt+V reopens the selected Spicy source');
     a.settings.lyricsSource='off';await a.render();side.remove();
     const button=document.createElement('button');button.dataset.testid='control-button-npv';button.setAttribute('aria-pressed','false');let opened=0;
     button.onclick=()=>{opened++;button.setAttribute('aria-pressed',button.getAttribute('aria-pressed')==='true'?'false':'true');};document.body.append(button);

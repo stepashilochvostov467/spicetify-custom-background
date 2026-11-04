@@ -12,7 +12,7 @@
         playerBlur: 16, playerDim: 0.6,
         zoom: 100, x: 50, y: 50,
         readable: false, accent: false, custom: false, color: "#ffffff",
-        transitions: true, colorMode: "standard"
+        colorMode: "standard"
     });
     const LIMITS = {
         blur: [0, 50], dim: [0, 1], cards: [0, 1],
@@ -31,13 +31,15 @@
         for (const [key, [lo, hi]] of Object.entries(LIMITS)) {
             if (typeof value[key] === "number" && Number.isFinite(value[key])) s[key] = clamp(value[key], lo, hi);
         }
-        for (const key of ["readable", "accent", "custom", "transitions"]) if (typeof value[key] === "boolean") s[key] = value[key];
+        for (const key of ["readable", "accent", "custom"]) if (typeof value[key] === "boolean") s[key] = value[key];
         for(const [key, fallback] of Object.entries(DEFAULT_EXTRA)) {
             if(typeof fallback==='boolean' && typeof value[key]==='boolean')s[key]=value[key];
         }
         for(const key of ['trackColor','buttonColor'])if(/^#[0-9a-f]{6}$/i.test(value[key]||''))s[key]=value[key];
         if(['default','system'].includes(value.font))s.font=value.font;
         if(['off','spotify','spicy'].includes(value.lyricsSource))s.lyricsSource=value.lyricsSource;
+        if(['spotify','spicy'].includes(value.lyricsLastSource))s.lyricsLastSource=value.lyricsLastSource;
+        if(['local','mymemory'].includes(value.lyricsTranslationEngine))s.lyricsTranslationEngine=value.lyricsTranslationEngine;
         if (/^#[0-9a-f]{6}$/i.test(value.color || "")) s.color = value.color;
         const mode=['standard','custom','auto'].includes(value.colorMode)?value.colorMode:(s.readable||s.accent?'auto':s.custom?'custom':'standard');
         s.colorMode=mode;s.readable=mode==='auto';s.custom=mode==='custom';s.accent=false;
@@ -224,12 +226,13 @@
             this.menu = document.createElement("section"); this.menu.id = "cbp-settings-menu";
             this.menu.hidden = true; this.menu.setAttribute("role", "dialog"); this.menu.setAttribute("aria-modal", "true"); this.menu.setAttribute("aria-labelledby", "cbp-heading");
             this.menu.innerHTML = `
-                <header><div><small>CUSTOM BACKGROUND · 4.3.0</small><h2 id="cbp-heading">Твоё оформление</h2></div><button data-action="close" aria-label="Закрыть настройки">✕</button></header>
-                <div class="cbp-toolbar"><select id="cbp-presets" aria-label="Сохранённые оформления"></select><button data-action="apply">Применить</button><button data-action="cycle" title="Следующее оформление · Alt+P">↻</button></div>
+                <header><div><small>CUSTOM BACKGROUND · 4.4.0</small><h2 id="cbp-heading">Твоё оформление</h2></div><button data-action="close" aria-label="Закрыть настройки">✕</button></header>
+                <details><summary>Сохранённые оформления</summary>
+                <div class="cbp-toolbar"><select id="cbp-presets" aria-label="Сохранённые оформления"></select><button data-action="apply">Применить</button></div>
                 <div class="cbp-preset-save"><input id="cbp-preset-name" maxlength="40" placeholder="Название своего оформления" aria-label="Название оформления"><button data-action="save">Сохранить</button><button data-action="delete" aria-label="Удалить выбранное оформление">Удалить</button></div>
                 <div class="cbp-row cbp-sharing"><button data-action="preset-image">Фон для выбранного</button><button data-action="export">Экспорт</button><button data-action="import">Импорт</button><input id="cbp-import" type="file" accept=".json,application/json" hidden></div>
-                <p class="cbp-hint">Новое оформление сохраняет фон и настройки. «Фон для выбранного» назначает текущую картинку выбранному стилю. Экспорт включает картинку.</p>
-                <details open><summary>Фон и положение</summary>
+                <p class="cbp-hint">Новое оформление сохраняет фон и настройки. «Фон для выбранного» назначает текущую картинку выбранному стилю. Экспорт включает картинку.</p></details>
+                <details><summary>Фон и положение</summary>
                     <label class="cbp-upload">Выбрать картинку, GIF или видео<input id="cbp-image-upload" type="file" accept="image/*,video/mp4,video/webm"></label>
                     <p class="cbp-hint">До 30 МБ. Файл хранится локально. Видео воспроизводится без звука.</p>
                     ${this.slider("Размытие фона", "blur", 0, 50, 1, "px")}
@@ -239,19 +242,16 @@
                     ${this.slider("Положение по вертикали", "y", 0, 100, 1, "%")}
                     <div class="cbp-row"><button data-action="center">По центру</button><button class="cbp-danger" data-action="remove-image">Удалить картинку</button></div>
                 </details>
-                <details><summary>Смена фона</summary>
-                    ${this.toggle("transitions", "Плавная смена фона")}
-                </details>
-                <details open><summary>Стеклянные панели</summary><p class="cbp-hint">Затемнение 0% — прозрачная панель. Размытие смягчает фон под ней.</p>
+                <details><summary>Стеклянные панели</summary><p class="cbp-hint">Затемнение 0% — прозрачная панель. Размытие смягчает фон под ней.</p>
                     ${[ ["Медиатека", "library"], ["Центральная часть", "center"], ["Плеер", "player"] ].map(([name,key]) => `<h3>${name}</h3>${this.slider("Размытие", key+"Blur", 0, 40, 1, "px")}${this.slider("Затемнение", key+"Dim", 0, 100, 1, "%")}`).join("")}
                     ${this.slider("Непрозрачность карточек", "cards", 0, 100, 1, "%")}
                 </details>
-                <details open><summary>Читаемость и цвет</summary>
+                <details><summary>Читаемость и цвет</summary>
                     <label class="cbp-row">Цвет текста<select data-setting="colorMode"><option value="standard">Стандартный</option><option value="custom">Свой цвет</option><option value="auto">Автоматический</option></select></label>
                     <p class="cbp-hint" id="cbp-auto-info"></p>
                     <div class="cbp-row"><span>Выбранный цвет</span><input id="cbp-color" type="color" aria-label="Цвет текста"></div>
                 </details>
-                <footer><span>Alt+B — настройки · <br>Alt+P — следующее оформление</span></footer>`;
+                <footer><span>Alt+B — настройки · Alt+V — текст песни</span></footer>`;
             this.backdrop = document.createElement("div"); this.backdrop.id = "cbp-menu-backdrop"; this.backdrop.hidden = true;
             document.body.append(this.backdrop, this.menu);
             this.fillPresets(); this.syncUI();
@@ -286,19 +286,18 @@
                 catch (error) { this.report(error); return; }
             }
             if (token !== this.imageToken) return;
-            this.settings = normalize({ ...preset.settings,  }); this.activePreset = id;
+            this.settings = normalize({ ...this.settings, ...preset.settings }); this.activePreset = id;
             this.save(); this.syncUI(); this.fillPresets(id); this.render();
             this.notify(`Оформление: ${preset.name}`);
         },
         cyclePreset() { const all = this.presets(); const index = all.findIndex(p => p.id === this.activePreset); this.applyPreset(all[(index + 1) % all.length].id); },
         showMenu(show = this.menu.hidden) {
-            if (show) this.previousFocus = document.activeElement;
+            if (show) { this.previousFocus = document.activeElement; for(const section of this.menu.querySelectorAll("details"))section.open=false; this.menu.scrollTop=0; }
             this.menu.hidden = !show; this.backdrop.hidden = !show;
             if (show) this.menu.querySelector('[data-action="close"]').focus(); else this.previousFocus?.focus?.();
         },
         registerButtons() {
             this.settingsButton = new Spicetify.Topbar.Button("Оформление · Alt+B", "edit", () => this.showMenu(), false, true);
-            this.presetButton = new Spicetify.Topbar.Button("Следующее оформление · Alt+P", "repeat", () => this.cyclePreset(), false, true);
         },
         syncStickyClipping() {
             const root = document.querySelector('.R1kU6b2KxZc8FWfbYf3m,.Root__main-view');
@@ -336,7 +335,7 @@
                 const el = e.target, key = el.dataset.setting;
                 if (key) {
                     const value = el.type === "checkbox" ? el.checked : (el.tagName === "SELECT" || el.type === "color") ? el.value : Number(el.value) / (["dim", "cards", "libraryDim", "centerDim", "playerDim"].includes(key) ? 100 : 1);
-                    this.settings = normalize({ ...this.settings, [key]: value }); this.activePreset = "";
+                    this.settings = normalize({ ...this.settings, [key]: value }); if(key==='lyricsSource'&&value!=='off')this.settings.lyricsLastSource=value; this.activePreset = "";
                     this.syncUI(); this.save(); schedule();
                 } else if (el.id === "cbp-color") { this.settings.color = el.value; this.activePreset = ""; this.save(); schedule(); }
             });
@@ -346,7 +345,6 @@
                 const selected = this.menu.querySelector("#cbp-presets").value;
                 if (action === "close") this.showMenu(false);
                 if (action === "apply") this.applyPreset(selected).catch(error => this.report(error));
-                if (action === "cycle") this.cyclePreset();
                 if (action === "center") { Object.assign(this.settings, { x: 50, y: 50, zoom: 100 }); this.activePreset = ""; this.save(); this.syncUI(); this.render(); }
                 if (action === "save") this.savePreset().catch(error => this.report(error));
                 if (action === "preset-image") this.rememberPresetImage(selected).catch(error => this.report(error));
@@ -355,13 +353,14 @@
                 if (action === "delete") {
                     if (BUILTINS.some(p => p.id === selected)) return;
                     this.customPresets = this.customPresets.filter(p => p.id !== selected);
-                    storage.put("cbp_v2_presets", JSON.stringify(this.customPresets)); this.fillPresets();
+                    storage.put("cbp_v2_presets", JSON.stringify(this.customPresets)); if(this.activePreset===selected){this.activePreset="";this.save();} this.fillPresets();
                 }
                 if (action === "remove-image") { const token = ++this.imageToken; this.queueImage("", token).catch(error => this.report(error)); }
             });
             this.backdrop.addEventListener("click", () => this.showMenu(false));
             this.menu.querySelector("#cbp-import").addEventListener("change", async e => { try { const file = e.target.files[0]; if (file) { if (file.size > 45 * 1024 * 1024) throw Error("Файл оформления слишком большой (максимум 45 МБ)"); await this.previewImport(JSON.parse(await file.text())); } } catch (error) { this.report(error); } finally { e.target.value = ""; } });
-            this.menu.querySelector("#cbp-image-upload").addEventListener("change", async e => {
+            this.menu.querySelector("#cbp-image-upload").addEventListener("change", e => {
+                this.mediaUpload=(async()=>{
                 const token = ++this.imageToken; const file = e.target.files[0]; if (!file) return;
                 try {
                     if (!/^(image\/|video\/(mp4|webm)$)/.test(file.type)) throw Error("Выбери картинку, GIF, MP4 или WebM");
@@ -371,6 +370,7 @@
                     if (token === this.imageToken) await this.queueImage(data, token);
                 } catch (error) { this.report(error); }
                 finally { e.target.value = ""; }
+                })();
             });
             document.addEventListener("keydown", e => {
                 if(this.importPreview || this.backgroundEditor)return;
@@ -384,12 +384,13 @@
                     else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
                 }
                 if (e.repeat || e.ctrlKey || e.metaKey) return;
-                const shortcut = ({ KeyB: "settings", KeyP: "preset" })[e.code]
-                    || ({ b: "settings", "и": "settings", p: "preset", "з": "preset" })[(e.key || "").toLowerCase()];
+                const shortcut = ({ KeyB: "settings", KeyP: "preset", KeyV: "lyrics" })[e.code]
+                    || ({ b: "settings", "и": "settings", p: "preset", "з": "preset", v: "lyrics", "м": "lyrics" })[(e.key || "").toLowerCase()];
                 if (e.altKey && shortcut) {
                     e.preventDefault(); e.stopImmediatePropagation();
                     if (shortcut === "settings") this.showMenu();
                     if (shortcut === "preset") this.cyclePreset();
+                    if (shortcut === "lyrics") this.togglePanelLyrics();
                 }
             }, true);
             let resize;
@@ -417,12 +418,14 @@
             if (!name) { this.notify("Введи название оформления", true); input.focus(); return; }
             if (this.customPresets.length >= 30) { this.notify("Можно сохранить до 30 оформлений", true); return; }
             const id = `custom-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            await this.mediaUpload;
+            await this.writeQueue;
             const settings = normalize(this.settings), image = this.image;
             await images.run("readwrite", image, `cbp_preset_${id}`);
             if (this.customPresets.length >= 30) throw Error("Можно сохранить до 30 оформлений");
             this.customPresets.push({ id, name, settings, imageSaved: true });
             storage.put("cbp_v2_presets", JSON.stringify(this.customPresets)); this.activePreset = id;
-            this.fillPresets(id); input.value = ""; this.notify("Оформление сохранено");
+            this.save(); this.fillPresets(id); input.value = ""; this.notify("Оформление сохранено");
         },
     };
 
@@ -472,6 +475,6 @@
         try { await APP.init(); } catch (error) { APP.report(error); window.__cbpLoaded = false; }
     }
     // A small diagnostic surface for support and deterministic tests.
-    window.CBP = { version: "4.3.0", app: APP, normalize, cropRect, analyzePixels, luminance };
+    window.CBP = { version: "4.4.0", app: APP, normalize, cropRect, analyzePixels, luminance };
     boot();
 })();
