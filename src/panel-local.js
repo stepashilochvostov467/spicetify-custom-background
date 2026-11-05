@@ -8,6 +8,7 @@
         },
         scheduleLocalUnload() {
             if(!this.localWorker)return;clearTimeout(this.localUnloadTimer);
+            if(this.settings.lyricsTranslation&&this.settings.lyricsSource!=='off'&&!document.hidden)return;
             this.localUnloadTimer=setTimeout(()=>this.closeLocalTranslator(),60000);
         },
         getLocalTranslator() {

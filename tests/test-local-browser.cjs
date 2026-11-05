@@ -26,6 +26,11 @@ fs.mkdirSync('test-results',{recursive:true});
         assert.ok(await page.evaluate(()=>heartbeats>=5),'UI should stay responsive during loading and inference');
         console.log(JSON.stringify({firstTranslationMs:Date.now()-start,text:await page.locator('.cbp-translation').textContent()}));
         assert.ok(!requests.some(r=>/violet|quiet%20river|small%20violet|small\+violet/i.test(r.url+r.body)),'lyric text must never enter network requests');
+        const warmStart=Date.now();
+        await page.evaluate(async()=>{window.warmWorker=CBP.app.localWorker;CBP.app.scheduleLocalUnload();if(CBP.app.localUnloadTimer)throw Error('Visible translated panel must retain its model');currentSynthetic='You and I can see the sun in the blue sky.';Spicetify.Player.data.item.uri='spotify:track:WARMNEXT';await CBP.app.loadPanelLyrics(true);});
+        await page.waitForFunction(translated,null,{timeout:60000});
+        assert.ok(await page.evaluate(()=>CBP.app.localWorker===warmWorker),'next track reuses the ready model');
+        console.log(JSON.stringify({warmNextTrackTranslationMs:Date.now()-warmStart}));
         await page.evaluate(()=>{CBP.app.settings.lyricsTranslation=false;CBP.app.updatePanelTranslation();CBP.app.closeLocalTranslator();});
         // Both the worker and the translation text are new. This cannot pass by
         // reusing the previous worker or the translated-line cache.

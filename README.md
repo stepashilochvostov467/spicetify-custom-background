@@ -3,7 +3,7 @@
 Свой Spotify: фоны, стеклянные панели, файлы оформлений и тексты песен.
 Your Spotify: custom backgrounds, glass panels, appearance files and lyrics.
 
-[Русский](#русский) · [English](#english) · **4.6.1**
+[Русский](#русский) · [English](#english) · **4.6.2**
 
 Версия **с выбором Spicy Lyrics или Spotify**. [Native без сторонних расширений](https://github.com/stepashilochvostov467/spicetify-custom-background-native).
 

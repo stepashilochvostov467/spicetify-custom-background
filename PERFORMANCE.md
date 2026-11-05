@@ -41,3 +41,8 @@ These are extension-level operation counts, not a whole-app speedup claim. Autom
 Normalized language codes and checked clearly English lyrics against incorrect provider tags before local translation. Sidebar uses the Spotify font without glyph strokes. Offline translation and model quality are unchanged.
 
 Simulated Spicy card ready at 60 ms reached our sidebar in 84–89 ms (previously 406–408 ms). A temporary listener wakes the cache read, with a 400 ms fallback and a 24-second timeout. External service response time is excluded.
+
+
+## Adaptive palette update
+
+Automatic text now retains the background hue rather than mapping every channel into 232–255. Sidebar text uses its own cropped cover/video palette with local dark surfaces behind lines for mixed black/white backgrounds. The local model stays loaded while its translated panel is visible; closing/hiding the panel still releases it after idle timeout. External Spicy service response time is unchanged. The previous exact-color-equivalence benchmark applies only to the earlier optimization release.

@@ -123,7 +123,7 @@
             }
         }
         const dominant = [...buckets].sort((a, b) => b[1] - a[1])[0]?.[0].split(",").map(Number) || [210, 220, 235];
-        const text = dominant.map(c => 232 + c / 255 * 23);
+        const text = dominant.map(c => 125 + c / 255 * 120);
         const textLum = luminance(text);
         // Use the 95th percentile of the visible crop; a 5:1 target leaves margin.
         const values=new Float64Array(rgb.length),dimLinear=new Float64Array(256),at=Math.min(rgb.length-1,Math.floor(rgb.length*.95));
@@ -440,6 +440,6 @@
         try { await APP.init(); } catch (error) { APP.report(error); window.__cbpLoaded = false; }
     }
     // A small diagnostic surface for support and deterministic tests.
-    window.CBP = { version: "4.6.0", app: APP, normalize, cropRect, analyzePixels, luminance };
+    window.CBP = { version: "4.6.2", app: APP, normalize, cropRect, analyzePixels, luminance };
     boot();
 })();

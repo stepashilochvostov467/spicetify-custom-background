@@ -175,6 +175,9 @@
         #cbp-lyrics .cbp-lines{overflow:auto;flex:1;min-height:0;padding-block:32px;scrollbar-width:thin}
         #cbp-lyrics .cbp-line{display:block;width:100%;border:0;background:transparent;text-align:start;color:inherit;font:inherit;line-height:1.5;opacity:1;padding:12px 4px;white-space:pre-wrap;overflow-wrap:anywhere;transition:opacity .2s}
         #cbp-lyrics .cbp-line[aria-current=true]{opacity:1;font-weight:600;background:#ffffff0d}#cbp-lyrics .cbp-line:hover{opacity:1}
+        #cbp-lyrics[data-adaptive=true] .cbp-line{background:rgba(8,12,20,.90);border-radius:10px;margin-bottom:8px;padding:12px 10px;text-shadow:none}
+        #cbp-lyrics[data-adaptive=true] .cbp-line[aria-current=true]{background:rgba(8,12,20,.94)}
+        #cbp-lyrics[data-adaptive=true] header,#cbp-lyrics[data-adaptive=true]>p{background:rgba(8,12,20,.8);border-radius:8px;padding:6px}
         #cbp-lyrics .cbp-original{display:block}
         #cbp-lyrics .cbp-translation{display:block;font-size:.7em;font-weight:400;line-height:1.45;margin-top:5px;opacity:1;color:inherit}
         #cbp-lyrics .cbp-translation[hidden]{display:none}

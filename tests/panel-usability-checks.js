@@ -9,7 +9,7 @@ async () => {
         ctx.fillStyle=color;ctx.fillRect(0,0,80,80);
         Spicetify.Player.data.item={uri:'spotify:track:'+name,metadata:{image_url:canvas.toDataURL()}};await a.render();await a.refreshPanelBackdrop(true);
         await a.panelBackdrop.querySelector('img').decode();a.updatePanelContrast();
-        ok(a.lyricsPanel.style.getPropertyValue('--cbp-panel-ink')===expected,'panel text adapts to its own '+name.toLowerCase()+' cover');
+        ok(a.lyricsPanel.dataset.adaptive==='true'&&a.lyricsPanel.style.getPropertyValue('--cbp-panel-ink')!=='#ffffff','panel text adapts to its own '+name.toLowerCase()+' cover');
     }
     const luminance=rgb=>rgb.map(v=>{const c=v/255;return c<=.04045?c/12.92:((c+.055)/1.055)**2.4;}).reduce((sum,c,i)=>sum+c*[.2126,.7152,.0722][i],0);
     const ratio=(a,b)=>{const x=luminance(a),y=luminance(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
