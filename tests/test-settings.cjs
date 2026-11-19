@@ -12,7 +12,13 @@ const assert=require('node:assert/strict');
  });
  const source=fs.readFileSync('custom-bg.js','utf8');
  const load=async()=>{await page.addScriptTag({content:source});await page.waitForFunction(()=>window.CBP?.app.lyricsPanel&&window.CBP?.app.menu);};
- await page.goto('https://cbp.test/');await load();await page.evaluate(()=>{CBP.app.settings.lyricsLastSource='spotify';});
+ await page.goto('https://cbp.test/');await load();
+ await page.keyboard.press('Alt+b');await page.getByText('Текст песни в правой панели',{exact:true}).click();
+ await page.locator('[data-setting=lyricsLayout]').selectOption('below');
+ await page.waitForFunction(()=>JSON.parse(localStorage.getItem('cbp_v2_settings')).lyricsLayout==='below');
+ await page.reload();await load();assert.equal(await page.locator('#cbp-lyrics').getAttribute('data-layout'),'below');
+ await page.evaluate(()=>{CBP.app.settings.lyricsLayout='above';CBP.app.save();CBP.app.render();CBP.app.settings.lyricsLastSource='spotify';});
+
  assert.equal(await page.locator('button[title*="Alt+P"]').count(),0);
  assert.equal(await page.locator('[data-action="cycle"]').count(),0);
  await page.keyboard.press('Alt+v');await page.waitForFunction(()=>!CBP.app.lyricsPanel.hidden);

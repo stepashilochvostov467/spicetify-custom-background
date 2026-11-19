@@ -25,5 +25,31 @@ fs.mkdirSync('test-results', {recursive:true});
     await page.waitForFunction(()=>window.CBP?.app.theme?.textContent.length>100);
 
     const result=await page.evaluate('('+fs.readFileSync('tests/syllable-checks.js','utf8')+')()');
-    assert.deepEqual(errors,[]);console.log(result.join('\n'));await browser.close();
+    await page.keyboard.press('Alt+b');
+    await page.getByText('Текст песни в правой панели',{exact:true}).click();
+    await page.locator('[data-setting=lyricsHighlight]').selectOption('syllables');
+    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('cbp_v2_settings')).lyricsHighlight==='syllables');
+    await page.locator('[data-setting=lyricsHighlight]').selectOption('letters');
+    await page.waitForFunction(()=>JSON.parse(localStorage.getItem('cbp_v2_settings')).lyricsHighlight==='letters');
+    await page.keyboard.press('Escape');
+    await page.evaluate(()=>{
+ const a=CBP.app;a.lyricsPanel.hidden=false;a.lyricsPanel.style.setProperty('--cbp-panel-ink','#ffffff');a.lyricsPanel.style.setProperty('--cbp-panel-muted-ink','#777777');
+ const row=document.createElement('div');row.className='cbp-line';row.style.background='#000';
+ row.innerHTML='<span class="cbp-original"><span id="sweep-pixels" class="cbp-syllable" style="font:40px monospace;--cbp-fill:0%">MMMMMMMM</span></span>';
+ a.lyricsPanel.querySelector('.cbp-lines').replaceChildren(row);
+});
+const luminanceHalves=[];
+for(const progress of [0,50,100]){
+ await page.locator('#sweep-pixels').evaluate((el,p)=>el.style.setProperty('--cbp-fill',p+'%'),progress);
+ const png=(await page.locator('#sweep-pixels').screenshot()).toString('base64');
+ luminanceHalves.push(await page.evaluate(async base64=>{
+  const img=new Image();img.src='data:image/png;base64,'+base64;await img.decode();const c=document.createElement('canvas');c.width=img.width;c.height=img.height;const ctx=c.getContext('2d');ctx.drawImage(img,0,0);const d=ctx.getImageData(0,0,c.width,c.height).data,sums=[0,0];
+  for(let y=0;y<c.height;y++)for(let x=0;x<c.width;x++){const i=(y*c.width+x)*4;sums[x<c.width/2?0:1]+=d[i]+d[i+1]+d[i+2];}return sums;
+ },png));
+}
+assert.ok(luminanceHalves[1][0]>luminanceHalves[0][0]*1.5,'half-filled glyphs brighten on their left half');
+assert.ok(Math.abs(luminanceHalves[1][1]-luminanceHalves[0][1])<luminanceHalves[0][1]*.12,'right half stays unfilled at 50 percent');
+assert.ok(luminanceHalves[2][1]>luminanceHalves[1][1]*1.5,'fill subsequently reaches the right half');
+console.log('Screenshot pixels confirm continuous left-to-right glyph fill at 0/50/100 percent');
+assert.deepEqual(errors,[]);console.log(result.join('\n'));await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});

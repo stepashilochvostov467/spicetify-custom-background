@@ -54,6 +54,13 @@ async () => {
     document.getElementById('main').append(nav);
     a.settings.colorMode='custom';a.settings.custom=true;a.settings.readable=false;a.settings.color='#123456';a.settings.buttonColor='#ffffff';await a.render();
     const icon=nav.querySelector('#test-icon');
+    icon.style.background='black';icon.style.boxShadow='0 0 8px black';
+    ok(getComputedStyle(icon).backgroundColor==='rgba(0, 0, 0, 0)'&&getComputedStyle(icon).boxShadow==='none','navigation icon loses dark tile and shadow');
+    const right=document.createElement('div');right.className='main-nowPlayingBar-right';right.innerHTML='<button style="background:#000;box-shadow:0 0 8px #000"><svg><path d="M0 0h8v8H0z"/></svg></button>';document.querySelector('#main').append(right);
+    ok(getComputedStyle(right.firstChild).backgroundColor==='rgba(0, 0, 0, 0)'&&getComputedStyle(right.firstChild).boxShadow==='none','player action icons have no dark tiles');
+    a.settings.colorMode='standard';a.settings.custom=false;a.settings.readable=false;await a.render();
+    ok(getComputedStyle(icon).backgroundColor==='rgba(0, 0, 0, 0)','transparent controls also apply in standard text color mode');
+    a.settings.colorMode='custom';a.settings.custom=true;await a.render();right.remove();
     ok(getComputedStyle(icon).color==='rgb(18, 52, 86)'&&getComputedStyle(icon.querySelector('svg')).color==='rgb(18, 52, 86)','navigation buttons and icons follow selected text color');
     ok(getComputedStyle(icon.querySelector('path')).fill==='rgb(18, 52, 86)'&&getComputedStyle(icon.querySelector('[fill="none"]')).fill==='none','monochrome icon fills adapt without filling outline icons');
     ok(getComputedStyle(icon.querySelector('[stroke]')).stroke==='rgb(18, 52, 86)'&&getComputedStyle(icon.querySelector('svg')).filter!=='none','outline icons adapt and gain a contrast halo');

@@ -25,5 +25,23 @@ fs.mkdirSync('test-results', {recursive:true});
     await page.waitForFunction(()=>window.CBP?.app.theme?.textContent.length>100);
 
     const result=await page.evaluate('('+fs.readFileSync('tests/panel-background-checks.js','utf8')+')()');
+    await page.evaluate(async()=>{
+        const app=CBP.app;
+        app.settings.lyricsSource='spotify';
+        app.settings.lyricsLayout='above';
+        Spicetify.Player.data.item={uri:'spotify:track:POINTER',metadata:{image_url:testImage}};
+        await app.render();
+        await app.refreshPanelBackdrop(true);
+    });
+    const menu=page.locator('#cbp-media-picker');
+    await page.locator('#cbp-lyrics .cbp-panel-backdrop').click({timeout:5000});
+    await menu.waitFor({state:'visible'});
+    await menu.locator('select').selectOption('cover');
+    await page.waitForFunction(()=>CBP.app.panelMediaChoice?.mode==='cover');
+    await menu.locator('select').press('Escape');
+    await menu.waitFor({state:'hidden'});
+    await page.getByRole('button',{name:'Фон этой песни',exact:true}).click();
+    await menu.waitFor({state:'visible'});
+    result.push('Real pointer clicks open the media chooser from the cover and header; selecting cover saves it');
     assert.deepEqual(errors,[]);console.log(result.join('\n'));await browser.close();
 })().catch(e=>{console.error(e);process.exit(1)});

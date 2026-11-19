@@ -1,6 +1,6 @@
 {
   "name": "spicetify-custom-background",
-  "version": "4.6.2",
+  "version": "4.12.3",
   "private": true,
   "description": "Custom Spotify backgrounds, glass panels, appearance import/export, Canvas, Spicy Lyrics syllable sync and Russian translation.",
   "repository": "github:stepashilochvostov467/spicetify-custom-background",
@@ -8,11 +8,12 @@
   "bugs": "https://github.com/stepashilochvostov467/spicetify-custom-background/issues",
   "scripts": {
     "build": "node scripts/build.cjs",
-    "test": "node tests/test-analysis.cjs && node tests/test-v3.cjs && node tests/test-v4.cjs && node tests/test-lyrics.cjs && node tests/test-settings.cjs && node tests/test-panel-background.cjs && node tests/test-translation.cjs && node tests/test-local-unit.cjs && node tests/test-panel-usability.cjs && node tests/performance.cjs && node tests/performance-active.cjs",
+    "test": "node tests/test-analysis.cjs && node tests/test-v3.cjs && node tests/test-v4.cjs && node tests/test-lyrics.cjs && node tests/test-duet.cjs && node tests/test-settings.cjs && node tests/test-panel-background.cjs && node tests/test-focus-layout.cjs && node tests/test-translation.cjs && node tests/test-local-unit.cjs && node tests/test-track-switching.cjs && node tests/test-prefetch-safe.cjs && node tests/test-panel-usability.cjs && node tests/performance.cjs && node tests/performance-active.cjs && node tests/test-song-map.cjs",
     "test:local": "node tests/test-local-browser.cjs"
   },
   "devDependencies": {
-    "playwright": "^1.55.0"
+    "playwright": "^1.55.0",
+    "terser": "5.44.1"
   },
   "license": "MIT"
 }

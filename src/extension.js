@@ -10,7 +10,7 @@
         libraryBlur: 14, libraryDim: 0.18,
         centerBlur: 0, centerDim: 0,
         playerBlur: 16, playerDim: 0.6,
-        zoom: 100, x: 50, y: 50,
+        zoom: 100, x: 50, y: 50, backgroundVideoSound: false,
         readable: false, accent: false, custom: false, color: "#ffffff",
         colorMode: "standard"
     });
@@ -31,11 +31,13 @@
         for (const [key, [lo, hi]] of Object.entries(LIMITS)) {
             if (typeof value[key] === "number" && Number.isFinite(value[key])) s[key] = clamp(value[key], lo, hi);
         }
-        for (const key of ["readable", "accent", "custom"]) if (typeof value[key] === "boolean") s[key] = value[key];
+        for (const key of ["readable", "accent", "custom", "backgroundVideoSound"]) if (typeof value[key] === "boolean") s[key] = value[key];
         for(const [key, fallback] of Object.entries(DEFAULT_EXTRA)) {
             if(typeof fallback==='boolean' && typeof value[key]==='boolean')s[key]=value[key];
         }
         for(const key of ['trackColor','buttonColor'])if(/^#[0-9a-f]{6}$/i.test(value[key]||''))s[key]=value[key];
+        if(['letters','syllables'].includes(value.lyricsHighlight))s.lyricsHighlight=value.lyricsHighlight;
+        if(['above','below','overlay'].includes(value.lyricsLayout))s.lyricsLayout=value.lyricsLayout;
         if(['default','system'].includes(value.font))s.font=value.font;
         if(['off','spotify','spicy'].includes(value.lyricsSource))s.lyricsSource=value.lyricsSource;
         if(['spotify','spicy'].includes(value.lyricsLastSource))s.lyricsLastSource=value.lyricsLastSource;
@@ -66,13 +68,26 @@
     }
     const images = {
         open() {
-            return new Promise((resolve, reject) => {
-                const r = indexedDB.open("CBP_Storage", 1);
-                r.onupgradeneeded = () => { if (!r.result.objectStoreNames.contains("images")) r.result.createObjectStore("images"); };
-                r.onsuccess = () => resolve(r.result);
-                r.onerror = () => reject(r.error);
-                r.onblocked = () => reject(Error("Хранилище занято другим окном Spotify"));
+            if (this.connection) return this.connection;
+            const connection = new Promise((resolve, reject) => {
+                const request = indexedDB.open("CBP_Storage", 1);
+                request.onupgradeneeded = () => {
+                    if (!request.result.objectStoreNames.contains("images")) request.result.createObjectStore("images");
+                };
+                request.onsuccess = () => {
+                    const db = request.result;
+                    if (this.connection !== connection) { db.close(); return; }
+                    const forget = () => { if (this.connection === connection) this.connection = null; };
+                    db.onclose = forget;
+                    db.onversionchange = () => { db.close(); forget(); };
+                    resolve(db);
+                };
+                request.onerror = () => reject(request.error);
+                request.onblocked = () => reject(Error("Хранилище занято другим окном Spotify"));
             });
+            this.connection = connection;
+            connection.catch(() => { if (this.connection === connection) this.connection = null; });
+            return connection;
         },
         async run(mode, value, key = "cbp_bg_image") {
             const db = await this.open();
@@ -81,8 +96,8 @@
                 const tx = db.transaction("images", mode);
                 const req = mode === "readonly" ? tx.objectStore("images").get(key) : tx.objectStore("images").put(value, key);
                 req.onsuccess = () => { result = req.result || ""; };
-                tx.oncomplete = () => { db.close(); resolve(result); };
-                tx.onabort = tx.onerror = () => { db.close(); reject(tx.error || Error("Ошибка хранилища")); };
+                tx.oncomplete = () => resolve(result);
+                tx.onabort = tx.onerror = () => reject(tx.error || Error("Ошибка хранилища"));
             });
         }
     };
@@ -110,37 +125,59 @@
         }
         return values[index]||0;
     }
-    function analyzePixels(data) {
-        const rgb = [], buckets = new Map();
-        for (let i = 0; i < data.length; i += 4) {
-            const alpha = data[i + 3] / 255;
-            const p = [0, 1, 2].map(n => data[i + n] * alpha + 18 * (1 - alpha));
-            rgb.push(p);
-            const max = Math.max(...p), min = Math.min(...p);
-            if (max - min > 45 && max > 65 && min < 210) {
-                const key = p.map(c => Math.min(255, Math.round(c / 32) * 32)).join(",");
-                buckets.set(key, (buckets.get(key) || 0) + 1);
+    function analyzePixels(data,accentOnly=false) {
+        const length=data.length/4;
+        const pixels=accentOnly?null:new Float64Array(length*3);
+        const buckets=new Map();
+        let integral=true;
+        for(let i=0,p=0;i<data.length;i+=4,p+=3){
+            const alpha=data[i+3]/255,base=18*(1-alpha);
+            const r=data[i]*alpha+base,g=data[i+1]*alpha+base,b=data[i+2]*alpha+base;
+            if(pixels){
+                pixels[p]=r;pixels[p+1]=g;pixels[p+2]=b;
+                if(alpha!==1&&alpha!==0)integral=false;
+            }
+            const max=Math.max(r,g,b),min=Math.min(r,g,b);
+            if(max-min>45&&max>65&&min<210){
+                const bucket=Math.round(r/32)*81+Math.round(g/32)*9+Math.round(b/32);
+                buckets.set(bucket,(buckets.get(bucket)||0)+1);
             }
         }
-        const dominant = [...buckets].sort((a, b) => b[1] - a[1])[0]?.[0].split(",").map(Number) || [210, 220, 235];
-        const text = dominant.map(c => 125 + c / 255 * 120);
-        const textLum = luminance(text);
-        // Use the 95th percentile of the visible crop; a 5:1 target leaves margin.
-        const values=new Float64Array(rgb.length),dimLinear=new Float64Array(256),at=Math.min(rgb.length-1,Math.floor(rgb.length*.95));
+        let best=-1,count=0;
+        for(const [bucket,size] of buckets){
+            if(size>count){best=bucket;count=size;}
+        }
+        const dominant=best<0?[210,220,235]:[
+            Math.min(255,Math.floor(best/81)*32),
+            Math.min(255,Math.floor(best/9)%9*32),
+            Math.min(255,best%9*32)
+        ];
+        const accent=hex(dominant);
+        if(accentOnly)return {accent};
+        const text=dominant.map(c=>125+c/255*120),textLum=luminance(text);
+        const values=new Float64Array(length),dimLinear=new Float64Array(256);
+        const at=Math.min(length-1,Math.floor(length*.95));
         const percentile=dim=>{
             const scale=1-dim;
-            for(let i=0;i<256;i++)dimLinear[i]=linearChannel(i*scale);
-            for(let i=0;i<rgb.length;i++){
-                const p=rgb[i];values[i]=.2126*(Number.isInteger(p[0])?dimLinear[p[0]]:linearChannel(p[0]*scale))+.7152*(Number.isInteger(p[1])?dimLinear[p[1]]:linearChannel(p[1]*scale))+.0722*(Number.isInteger(p[2])?dimLinear[p[2]]:linearChannel(p[2]*scale));
+            if(integral){
+                for(let i=0;i<256;i++)dimLinear[i]=linearChannel(i*scale);
+                for(let i=0,p=0;i<length;i++,p+=3){
+                    values[i]=.2126*dimLinear[pixels[p]]+.7152*dimLinear[pixels[p+1]]+.0722*dimLinear[pixels[p+2]];
+                }
+            }else{
+                for(let i=0,p=0;i<length;i++,p+=3){
+                    values[i]=.2126*linearChannel(pixels[p]*scale)+.7152*linearChannel(pixels[p+1]*scale)+.0722*linearChannel(pixels[p+2]*scale);
+                }
             }
             return at>=0?selectValue(values,at):0;
         };
-        let lo = 0, hi = 0.9;
-        for (let i = 0; i < 12; i++) {
-            const mid = (lo + hi) / 2;
-            if ((textLum + 0.05) / (percentile(mid) + 0.05) >= 5) hi = mid; else lo = mid;
+        // Use the 95th percentile of the visible crop; a 5:1 target leaves margin.
+        let lo=0,hi=.9;
+        for(let i=0;i<12;i++){
+            const mid=(lo+hi)/2;
+            if((textLum+.05)/(percentile(mid)+.05)>=5)hi=mid;else lo=mid;
         }
-        return { text: hex(text), accent: hex(dominant), minDim: hi };
+        return {text:hex(text),accent,minDim:hi};
     }
 
     function baseStyles(bgOp, cardOp, playerOp) {
@@ -165,7 +202,7 @@
         async render() {
             const token = ++this.revision;
             const s = this.settings;
-            if (this.image && !this.image.startsWith("data:video/") && s.readable) {
+            if (this.image && !isBackgroundVideo(this.image) && s.readable) {
                 const key = [s.zoom, s.x, s.y, innerWidth, innerHeight].join(":");
                 try {
                     const source = this.image;
@@ -189,7 +226,7 @@
             if (token !== this.revision) return;
             const automatic = s.readable && !!this.image;
             const color = automatic ? this.sample?.text || "#f7f8fc" : s.color;
-            const effectiveDim = automatic ? Math.max(s.dim, this.sample?.minDim || (this.image.startsWith("data:video/") ? .56 : 0)) : s.dim;
+            const effectiveDim = automatic ? Math.max(s.dim, this.sample?.minDim || (isBackgroundVideo(this.image) ? .56 : 0)) : s.dim;
             let css='';
             if(this.image){
                 const baseKey=[effectiveDim,s.cards,s.playerDim].join(':');
@@ -220,11 +257,15 @@
                 + `[data-testid="now-playing-bar"],.main-nowPlayingBar-container,.main-nowPlayingBar-nowPlayingBar{background:transparent!important;backdrop-filter:none!important;}`;
         },
         textCSS(color, enabled) {
-            if (!enabled) return "";
+            const surfaces='#global-nav-bar,.Root__globalNav,.main-topBar-container,.main-globalNav-historyButtons,.Root__now-playing-bar,.XvuTwlgQRqJ5NnVLN9ZH,[data-testid="now-playing-bar"],.player-controls__buttons,.main-nowPlayingBar-right';
+            const icons='#main :is('+surfaces+') :is(button,[role="button"],a):has(svg):not(:has(img,picture)):not([data-testid="control-button-playpause"]):not([data-testid="play-button"])';
+            const clearControls=icons+'{background:none!important;box-shadow:none!important;border-color:transparent!important;}'+icons+'::before,'+icons+'::after{background:none!important;box-shadow:none!important;}'+
+                '#main :is(#global-nav-bar,.Root__globalNav,.main-topBar-container) :is([role="search"],.main-globalNav-searchInputContainer,.main-globalNav-searchContainer,.main-topBar-searchBar,.main-topBar-searchBarContainer){background:transparent!important;box-shadow:none!important;}';
+            if (!enabled) return clearControls;
             // Match control icons to the chosen text ink; artwork and our dialogs remain untouched.
             const light=luminance(color.match(/[0-9a-f]{2}/gi).map(v=>parseInt(v,16)))>.25;
-            const halo=light?'#000b':'#ffffffe0',backdrop=light?'#10131b8c':'#ffffffa6';
-            return `#main{--cbp-text:${color};--cbp-control-halo:${halo};--cbp-control-backdrop:${backdrop};--text-base:${color}!important;--text-subdued:${color}!important;--essential-base:${color}!important;}
+            const halo=light?'#000b':'#ffffffe0';
+            return clearControls+`#main{--cbp-text:${color};--cbp-control-halo:${halo};--text-base:${color}!important;--text-subdued:${color}!important;--essential-base:${color}!important;}
                 #main :is(button,[role="button"],input){color:var(--cbp-text)!important;--text-base:${color}!important;--text-subdued:${color}!important;--essential-base:${color}!important;--essential-subdued:${color}!important;}
                 #main :is(#global-nav-bar,.Root__globalNav,.main-topBar-container) svg{color:var(--cbp-text)!important;filter:drop-shadow(0 0 2px var(--cbp-control-halo));}
                 #main :is(#global-nav-bar,.Root__globalNav) input::placeholder{color:var(--cbp-text)!important;opacity:.85;}
@@ -232,7 +273,6 @@
                 #main :is(button,[role="button"],a) svg{color:inherit!important;filter:drop-shadow(0 0 2px var(--cbp-control-halo));}
                 #main :is(button,[role="button"],a) svg:not([fill="none"]),#main :is(button,[role="button"],a) svg [fill]:not([fill="none"]){fill:currentColor!important;}
                 #main :is(button,[role="button"],a) svg [stroke]:not([stroke="none"]){stroke:currentColor!important;}
-                #main :is(#global-nav-bar,.Root__globalNav,.main-topBar-container,.player-controls__buttons,.main-nowPlayingBar-right) button:has(svg):not(:has(img,picture)):not([data-testid="control-button-playpause"]):not([data-testid="play-button"]){background-color:var(--cbp-control-backdrop)!important;}
                 #main :is(button,[role="button"],a):focus-visible{outline:2px solid var(--cbp-text)!important;outline-offset:3px;}
                 #main :is(.Root__nav-bar,.yQCyOSVcMCen_NJKPHB6,.Root__main-view,.R1kU6b2KxZc8FWfbYf3m,.Root__right-sidebar,.s8fIIxwITjOk1aFOxhPv,.Root__now-playing-bar,.XvuTwlgQRqJ5NnVLN9ZH) :is([data-encore-id="text"],h1,h2,h3,h4,p,a,[role="gridcell"]){color:var(--cbp-text)!important;text-shadow:0 1px 4px #000c!important;}
                 #main :is(.Root__nav-bar,.yQCyOSVcMCen_NJKPHB6,.Root__main-view,.R1kU6b2KxZc8FWfbYf3m,.Root__right-sidebar,.s8fIIxwITjOk1aFOxhPv,.Root__now-playing-bar,.XvuTwlgQRqJ5NnVLN9ZH){--text-base:${color}!important;--text-subdued:${color}!important;}
@@ -244,8 +284,10 @@
             this.menu.innerHTML = `
                 <header><div><small>CUSTOM BACKGROUND · 4.6.0</small><h2 id="cbp-heading">Твоё оформление</h2></div><button data-action="close" aria-label="Закрыть настройки">✕</button></header>
                 <details><summary>Фон и положение</summary>
-                    <label class="cbp-upload">Выбрать картинку, GIF или видео<input id="cbp-image-upload" type="file" accept="image/*,video/mp4,video/webm"></label>
-                    <p class="cbp-hint">До 30 МБ. Файл хранится локально. Видео воспроизводится без звука.</p>
+                    <label class="cbp-upload">Выбрать картинку, GIF или видео<input id="cbp-image-upload" type="file" accept="image/*,video/*,.mp4,.m4v,.mov,.webm,.mkv,.avi,.ogv,.ogg,.mpg,.mpeg,.ts,.wmv,.3gp,.flv"></label>
+                    <p class="cbp-hint">Файл хранится локально. Для изображений действует лимит 30 МБ.</p>
+                    <p class="cbp-hint" data-wallpaper-status role="status" hidden></p>
+                    ${this.toggle("backgroundVideoSound", "Звук видеофона")}
                     ${this.slider("Размытие фона", "blur", 0, 50, 1, "px")}
                     ${this.slider("Затемнение фона", "dim", 0, 100, 1, "%")}
                     ${this.slider("Масштаб", "zoom", 100, 250, 1, "%")}
@@ -325,27 +367,54 @@
                 if (key) {
                     const value = el.type === "checkbox" ? el.checked : (el.tagName === "SELECT" || el.type === "color") ? el.value : Number(el.value) / (["dim", "cards", "libraryDim", "centerDim", "playerDim", "lyricsDim"].includes(key) ? 100 : 1);
                     this.settings = normalize({ ...this.settings, [key]: value }); if(key==='lyricsSource'&&value!=='off')this.settings.lyricsLastSource=value;
-                    this.syncUI(key); this.save(); schedule();
+                    this.syncUI(key); this.save();
+                    if(key==="backgroundVideoSound"){this.backgroundSoundBlocked=null;this.syncBackgroundPlayback();}else schedule();
                 } else if (el.id === "cbp-color") { this.settings.color = el.value; this.save(); schedule(); }
             });
             this.menu.addEventListener("click", e => {
                 const action = e.target.closest("[data-action]")?.dataset.action;
                 if (action === "close") this.showMenu(false);
                 if (action === "center") { Object.assign(this.settings, { x: 50, y: 50, zoom: 100 }); this.save(); this.syncUI(); this.render(); }
-                if (action === "remove-image") { const token = ++this.imageToken; this.queueImage("", token).catch(error => this.report(error)); }
+                if (action === "remove-image") { this.wallpaperConversion?.abort(); const token = ++this.imageToken; this.queueImage("", token).catch(error => this.report(error)); }
             });
             this.backdrop.addEventListener("click", () => this.showMenu(false));
             this.menu.querySelector("#cbp-image-upload").addEventListener("change", e => {
+                const file=e.target.files[0]; if(!file)return;
+                e.target.value="";
+                this.wallpaperConversion?.abort();
+                const token=++this.imageToken;
                 this.mediaUpload=(async()=>{
-                const token = ++this.imageToken; const file = e.target.files[0]; if (!file) return;
                 try {
-                    if (!/^(image\/|video\/(mp4|webm)$)/.test(file.type)) throw Error("Выбери картинку, GIF, MP4 или WebM");
-                    if (file.size > 30 * 1024 * 1024) throw Error("Максимальный размер картинки — 30 МБ");
-                    const data = await new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = () => reject(r.error); r.readAsDataURL(file); });
-                    await validateMedia(data);
-                    if (token === this.imageToken) await this.queueImage(data, token);
-                } catch (error) { this.report(error); }
-                finally { e.target.value = ""; }
+                    const videoType=backgroundVideoType(file);
+                    if(!videoType&&!file.type.startsWith('image/'))throw Error('Выбери картинку или видео');
+                    if(!videoType&&file.size>30*1024*1024)throw Error('Максимальный размер картинки — 30 МБ');
+                    let data=videoType?(file.type===videoType?file:file.slice(0,file.size,videoType)):await readBackgroundDataURL(file);
+                    let converted=false;
+                    try{await validateMedia(data);}
+                    catch(error){
+                        if(!videoType||token!==this.imageToken)throw error;
+                        const controller=new AbortController();
+                        this.wallpaperConversion=controller;
+                        const status=this.menu.querySelector('[data-wallpaper-status]');
+                        status.hidden=false;
+                        status.textContent='Перевожу видео в WebM на этом компьютере…';
+                        this.notify(status.textContent);
+                        try{
+                            data=await convertBackgroundVideo(file,AbortSignal.any([controller.signal,AbortSignal.timeout(180000)]));
+                            await validateMedia(data);
+                            converted=true;
+                        }finally{
+                            if(this.wallpaperConversion===controller){
+                                this.wallpaperConversion=null;
+                                status.hidden=true;
+                            }
+                        }
+                    }
+                    if(token===this.imageToken){
+                        await this.queueImage(data,token);
+                        if(converted&&token===this.imageToken)this.notify('Видеофон готов');
+                    }
+                } catch (error) { if(token===this.imageToken)this.report(error); }
                 })();
             });
             document.addEventListener("keydown", e => {
@@ -374,7 +443,13 @@
             let resize;
             window.addEventListener("resize", () => { clearTimeout(resize); resize = setTimeout(() => this.render(), 180); });
             let clipFrame;
-            const clipSoon = () => { cancelAnimationFrame(clipFrame); clipFrame = requestAnimationFrame(() => this.syncStickyClipping()); };
+            const clipSoon = () => {
+                if(clipFrame||!this.image&&!this.clippedElements?.size)return;
+                clipFrame=requestAnimationFrame(()=>{
+                    clipFrame=0;
+                    this.syncStickyClipping();
+                });
+            };
             document.addEventListener('scroll', e => { if(e.target.matches?.('.main-view-container__scroll-node,[data-overlayscrollbars-viewport],.os-viewport')){this.stickyViewport=e.target;clipSoon();} }, true);
             const content = document.querySelector('.R1kU6b2KxZc8FWfbYf3m,.Root__main-view');
             if (content) { this.clipObserver = new MutationObserver(()=>{clipSoon();this.scheduleHomeScan?.();}); this.clipObserver.observe(content, { childList: true, subtree: true }); }
@@ -440,6 +515,6 @@
         try { await APP.init(); } catch (error) { APP.report(error); window.__cbpLoaded = false; }
     }
     // A small diagnostic surface for support and deterministic tests.
-    window.CBP = { version: "4.6.2", app: APP, normalize, cropRect, analyzePixels, luminance };
+    window.CBP = { version: "4.12.3", app: APP, normalize, cropRect, analyzePixels, luminance };
     boot();
 })();

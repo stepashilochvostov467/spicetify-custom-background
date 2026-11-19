@@ -14,7 +14,10 @@
         },
         async appearanceBundle() {
             await this.mediaUpload;await this.writeQueue;
-            return {format:'custom-background-preset',version:1,name:'Моё оформление',settings:normalize(this.settings),image:this.image};
+            const media=this.image;
+            if(media instanceof Blob&&media.size>30*1024*1024)throw Error('В JSON можно вложить видео до 30 МБ. Более крупный видеофон хранится в Spotify.');
+            const image=media instanceof Blob?await readBackgroundDataURL(media):media;
+            return {format:'custom-background-preset',version:1,name:'Моё оформление',settings:normalize(this.settings),image};
         },
         async exportAppearance() {
             const bundle=await this.appearanceBundle();
@@ -25,6 +28,7 @@
         },
         async importAppearance(raw) {
             const bundle=this.validateBundle(raw),token=++this.imageToken;
+            this.wallpaperConversion?.abort();
             if(bundle.image)await validateMedia(bundle.image);
             if(token!==this.imageToken)return;
             await this.queueImage(bundle.image,token);if(token!==this.imageToken)return;

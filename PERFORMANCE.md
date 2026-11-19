@@ -46,3 +46,44 @@ Simulated Spicy card ready at 60 ms reached our sidebar in 84–89 ms (previousl
 ## Adaptive palette update
 
 Automatic text now retains the background hue rather than mapping every channel into 232–255. Sidebar text uses its own cropped cover/video palette with local dark surfaces behind lines for mixed black/white backgrounds. The local model stays loaded while its translated panel is visible; closing/hiding the panel still releases it after idle timeout. External Spicy service response time is unchanged. The previous exact-color-equivalence benchmark applies only to the earlier optimization release.
+
+
+## Fixed sidebar color
+
+Sidebar ink is selected once for each new media source, independently of main wallpaper colors. GIF/video playback, resizing, dimming changes and visibility events reuse that selection. No recurring color sampling timers, text shadows, drop shadows, strokes or opaque lyric cards are used. Original and translation share the same ink.
+
+
+## First-frame streaming and visible fill
+
+Canvas becomes visible on loadeddata while later segments continue downloading. A delayed-final-segment test verifies this independently of service latency. This does not guarantee cold network/media startup below 500 ms.
+
+Syllable fill uses one hue with different opacity before/after the moving boundary. Screenshot pixel tests at 0/50/100 percent confirm visible progress within glyphs. Spicy initial cache polling uses 100 ms bounded waits, then 250 ms, with earlier DOM wakeup. No substitute source or fabricated timing is used.
+
+
+## Media frame proportions
+
+Separated preview frames use intrinsic media aspect ratio and cap height at 34vh. Portrait Canvas narrows its frame, landscape clips reduce frame height, and photos retain their own proportions. No stretching, cropping or extra CSS letterboxing is needed. Actual 9:16/16:9 recordings and square/landscape/portrait images are checked. This layout change makes no sub-500-ms cold loading claim.
+
+
+## Translation recovery
+
+English detection accepts sufficiently strong English vocabulary despite incorrect provider tags, while checking Latin-script predominance. A failing local inference is retried once with a fresh worker; isolated bad rows no longer abort all following translations. Three consecutive failures still stop the queue. Sidebar control backgrounds remain transparent in both RU states.
+
+
+## Two-track lookahead
+
+A browser fixture with delayed lyric/Canvas responses prepares two upcoming tracks, then switches with zero new network/inference calls. Actual WebM decoding plus text and cached translation took 32–81 ms in the observed runs. This is a prepared-cache fixture, not an end-to-end cold service benchmark. Memory eviction at 32 MiB and cancellation on queue replacement are tested. Background local inference is sequential and yields to foreground work.
+
+
+## Lookahead rollback
+
+Experimental prefetch is excluded from the release build after real-world missing-lyrics reports. Earlier prepared-cache benchmarks did not establish reliable live multi-track integration. Regression tests now drive five consecutive songchange events plus a rapid stale-response race and require both original and translation after every switch.
+
+## Последнее обновление / Latest update
+
+| Замер / Measurement | До / Before | После / After |
+| --- | ---: | ---: |
+| Записи очереди, прочитанные для двух ближайших треков / Queue entries read to prefetch two songs | 1000 | 2 |
+| Повторные открытия IndexedDB при 20 обращениях после запуска / IndexedDB reopens for 20 requests after startup | 20 | 0 |
+| Размер custom-bg.js / bundle size | 255 214 Б | 183 945 Б |
+| Чтения стилей букв за 100 кадров / Letter style reads across 100 frames | 60 000 | 0 |

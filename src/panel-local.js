@@ -1,4 +1,10 @@
     Object.assign(APP,{
+        localTranslationInput(text) {
+            let input=text.replace(/\b([a-z]{2,}in)[’'](?=\W|$)/gi,'$1g').replace(/\bwanna\b/gi,'want to').replace(/\bgonna\b/gi,'going to').replace(/\bgotta\b/gi,'have to');
+            if(/\b(car|driver|driving|honda|civic|tires|tyres|parking|road|wheels)\b/i.test(input))input=input.replace(/\b(doing|does|did|do) donuts\b/gi,(_,verb)=>({doing:'driving',does:'drives',did:'drove',do:'drive'}[verb.toLowerCase()]+' in tight circles'));
+            if(/\b(gemstones|diamonds|jewels|jewelry|necklace)\b/i.test(input))input=input.replace(/\bgoing dumb\b/gi,'looking dazzling');
+            return input;
+        },
         closeLocalTranslator() {
             clearTimeout(this.localUnloadTimer);this.localUnloadTimer=null;
             this.localWorker?.terminate();this.localWorker=null;this.localWorkerReady=false;
@@ -51,7 +57,7 @@
         },
         async requestLocalRussianTranslation(text,signal) {
             const result=[];
-            for(const chunk of this.translationChunks(text))result.push(await this.localTranslationLine(chunk,signal));
+            for(const chunk of this.translationChunks(this.localTranslationInput(text)))result.push(await this.localTranslationLine(chunk,signal));
             return result.join(' ');
         }
     });

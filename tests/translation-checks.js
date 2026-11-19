@@ -24,7 +24,7 @@ async () => {
     rows[2].querySelector('.cbp-translation').click();
     ok(window.calls.some(c=>Array.isArray(c)&&c[0]==='seek'&&c[1]===2000),'clicking translation seeks the original line timestamp');
     a.settings=CBP.normalize({...a.settings,colorMode:'custom',color:'#12ab34'});await a.render();
-    ok(getComputedStyle(rows[0].querySelector('.cbp-translation')).color==='rgb(18, 171, 52)','translation follows the selected appearance text color');
+    ok(getComputedStyle(rows[0].querySelector('.cbp-translation')).color===getComputedStyle(rows[0].querySelector('.cbp-original')).color,'translation and original share the independent sidebar color');
     ok(rows[0].querySelector('.cbp-translation').getBoundingClientRect().top>=rows[0].querySelector('.cbp-original').getBoundingClientRect().bottom,'translation appears underneath the original');
     await a.loadPanelLyrics(true);await settle();ok(calls===2,'reload reuses cached translations');
     await wait(550);a.translationCache=null;a.translationCachePromise=null;

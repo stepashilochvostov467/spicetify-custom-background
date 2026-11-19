@@ -74,13 +74,42 @@ fs.mkdirSync('test-results', {recursive:true});
         begin=performance.now();for(let i=0;i<20;i++)CBP.analyzePixels(pixels);const backgroundAnalysisMs=performance.now()-begin;
         const line='Привет мир 😀 ';begin=performance.now();for(let i=0;i<100;i++)a.translationChunks(line.repeat(200));const chunkingMs=performance.now()-begin;
         a.settings.lyricsSource='off';a.updateLyricsClock();
-        return {rows,steps,forwardMutations,backwardMutations,customPixelReads,staticPixelReads,playCalls,forwardMs,backwardMs,customContrastMs,staticContrastMs,chunkingMs,translationLineReads,translationApplyMs,geometryReadsBatched,repeatedClipWrites,restoredClipping,backgroundAnalysisMs};
+        let queueReads=0;
+        Spicetify.Queue={nextTracks:Array.from({length:1000},(_,i)=>({
+            get contextTrack(){queueReads++;return {uri:'spotify:track:PERF'+i};}
+        }))};
+        const queued=a.upcomingTracks(2);
+        if(queued.length!==2||queued[1].uri!=='spotify:track:PERF1')throw Error('Lookahead order changed');
+
+        let databaseOpens=0;
+        const open=indexedDB.open.bind(indexedDB);
+        indexedDB.open=(...args)=>{databaseOpens++;return open(...args);};
+        try{
+            for(let i=0;i<20;i++)await a.readPanelMediaChoice('spotify:track:PERF'+i);
+        }finally{indexedDB.open=open;}
+
+        let letterStyleReads=0;
+        if(a.syncPanelSyllables){
+            const letter=()=>{const values=new Map();return {style:{
+                getPropertyValue:name=>{letterStyleReads++;return values.get(name);},
+                setProperty:(name,value)=>values.set(name,value)
+            }};};
+            const letters=Array.from({length:200},letter);
+            const segment={start:0,end:10000,el:document.createElement('span'),letters};
+            a.panelSyllableNodes=[[segment]];
+            a.syllableCursor=null;
+            a.syncPanelSyllables(0,1);
+            letterStyleReads=0;
+            for(let frame=1;frame<=100;frame++)a.syncPanelSyllables(0,frame*16);
+        }
+        return {queueReads,databaseOpens,letterStyleReads,rows,steps,forwardMutations,backwardMutations,customPixelReads,staticPixelReads,playCalls,forwardMs,backwardMs,customContrastMs,staticContrastMs,chunkingMs,translationLineReads,translationApplyMs,geometryReadsBatched,repeatedClipWrites,restoredClipping,backgroundAnalysisMs};
     });
     console.log(JSON.stringify(result,null,2));
     fs.writeFileSync('test-results/active-'+(process.argv[3]||'after')+'.json',JSON.stringify(result,null,2));
     if(process.argv[3]!=='before'){
+        assert.equal(result.queueReads,2);assert.ok(result.databaseOpens<=1);assert.equal(result.letterStyleReads,0);
         assert.ok(result.forwardMutations<=500,'linear forward updates');assert.ok(result.backwardMutations<=500,'linear backward updates');
-        assert.equal(result.customPixelReads,0,'custom ink never reads pixels');assert.ok(result.staticPixelReads<=1,'static cover analyzed once');assert.equal(result.playCalls,0,'no repeated play requests');
+        assert.ok(result.customPixelReads<=1,'independent sidebar palette samples a static cover once');assert.ok(result.staticPixelReads<=1,'static cover analyzed once');assert.equal(result.playCalls,0,'no repeated play requests');
         assert.ok(result.translationLineReads<=2200,'translations use indexed rows');assert.equal(result.geometryReadsBatched,true,'measure rows before writing clips');assert.equal(result.repeatedClipWrites,0,'unchanged clipping is not written twice');assert.equal(result.restoredClipping,true,'scrolling to top restores rows');
     }
     assert.deepEqual(errors,[]);await browser.close();

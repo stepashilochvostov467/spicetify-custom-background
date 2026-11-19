@@ -2,7 +2,7 @@
         validateBundle(bundle) {
             if(!bundle||bundle.format!=='custom-background-preset'||bundle.version!==1||typeof bundle.name!=='string'||!bundle.name.trim()||!bundle.settings||typeof bundle.settings!=='object'||Array.isArray(bundle.settings))throw Error('Это не файл оформления Custom Background');
             const image=bundle.image??'';
-            if(typeof image!=='string'||image.length>43*1024*1024||(image&&!/^data:(?:video\/(?:mp4|webm)|image\/(?:png|jpeg|jpg|webp|gif|avif|bmp|x-icon|svg\+xml));base64,[a-z0-9+/=\s]+$/i.test(image)))throw Error('В оформлении должен быть встроенный фон, а не ссылка');
+            if(typeof image!=='string'||image.length>43*1024*1024||(image&&!/^data:(?:video\/[a-z0-9.+-]+|image\/(?:png|jpeg|jpg|webp|gif|avif|bmp|x-icon|svg\+xml));base64,[a-z0-9+/=\s]+$/i.test(image)))throw Error('В оформлении должен быть встроенный фон, а не ссылка');
             return {...bundle,name:bundle.name.trim().slice(0,40),settings:normalize(bundle.settings),image};
         },
         async previewImport(raw) {
@@ -21,7 +21,7 @@
                 const button=modal.querySelector('[data-confirm]');button.disabled=true;
                 try{
                     const mode=modal.querySelector('input:checked').value;
-                    const settings=mode==='colors'?{...this.settings,...Object.fromEntries(['blur','dim','zoom','x','y','readable','accent','custom','colorMode','color','trackColor','buttonColor'].map(k=>[k,s[k]]))}:s;
+                    const settings=mode==='colors'?{...this.settings,...Object.fromEntries(['blur','dim','zoom','x','y','backgroundVideoSound','readable','accent','custom','colorMode','color','trackColor','buttonColor'].map(k=>[k,s[k]]))}:s;
                     await this.importAppearance({...bundle,settings});close();
                 }catch(error){modal.querySelector('[role="status"]').textContent=error.message;button.disabled=false;}
             };
